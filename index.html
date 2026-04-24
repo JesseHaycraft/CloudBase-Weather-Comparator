@@ -1,0 +1,3141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CloudBase — Airport Weather Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161e;
+    --bg3: #1a1e28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --muted2: #9ca3af;
+    --accent: #3b82f6;
+
+    --vfr: #22c55e;
+    --mvfr: #3b82f6;
+    --ifr: #f59e0b;
+    --lifr: #ef4444;
+
+    --ap0: #a855f7;
+    --ap1: #ec4899;
+    --ap2: #22d3ee;
+    --ap3: #a3e635;
+    --ap4: #fb923c;
+    --ap5: #d946ef;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    background: rgba(13,15,20,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo span {
+    color: var(--accent);
+  }
+
+  .logo-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: 4px;
+    margin-top: 2px;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 40px;
+  }
+
+  /* ── INPUT PANEL ── */
+  .input-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 32px;
+  }
+
+  .panel-title {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted2);
+    margin-bottom: 20px;
+  }
+
+  .airports-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .airport-input-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 160px;
+  }
+
+  .airport-block-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .airport-block-inner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .airport-input-field {
+    background: var(--bg3);
+    border: 1.5px solid var(--border2);
+    border-radius: 8px;
+    outline: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    width: 130px;
+    padding: 10px 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    transition: border-color 0.15s;
+  }
+
+  .airport-input-field:focus {
+    border-color: var(--accent);
+    background: var(--bg2);
+  }
+
+  .airport-input-field::placeholder {
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    font-weight: 400;
+  }
+
+  .airport-remove-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 6px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .airport-remove-btn:hover { color: var(--lifr); border-color: var(--lifr); }
+
+  .add-btn {
+    background: none;
+    border: 1px dashed var(--border2);
+    border-radius: 10px;
+    color: var(--muted2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .add-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── PANEL COLUMNS (airports + time period side by side on wide screens) ── */
+  .panel-columns {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .panel-airports {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .panel-timeperiod {
+    flex-shrink: 0;
+  }
+
+  /* ── TIME FILTER ── */
+  .time-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    margin-right: 4px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+  }
+
+  .filter-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--muted2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  select.filter-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    cursor: pointer;
+  }
+
+  select.filter-btn.active {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  select.filter-btn option {
+    background: var(--bg2);
+    color: var(--text);
+  }
+
+  /* ── COMPARE BUTTON ── */
+  .compare-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 12px 32px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .compare-btn:hover { background: #2563eb; transform: translateY(-1px); }
+  .compare-btn:active { transform: translateY(0); }
+  .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* ── LOADING ── */
+  #loading {
+    display: none;
+    text-align: center;
+    padding: 80px 0;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  #session-log-panel {
+    display: none;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .session-log-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .loading-log {
+    background: #080a0e;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .loading-log-line {
+    padding: 1px 0;
+    color: var(--muted);
+    line-height: 1.8;
+    white-space: pre;
+  }
+
+  .loading-log-line.ok   { color: #4ade80; }
+  .loading-log-line.head { color: var(--text); font-weight: 500; }
+  .loading-log-line.dim  { color: #3d4451; }
+  .loading-log-line.live { color: #67e8f9; }
+
+  /* ── ERROR ── */
+  .error-msg {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 13px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  /* ── RESULTS ── */
+  #results { display: none; }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+
+  .ap-legend {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .ap-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+  }
+
+  .ap-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 40px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+  }
+
+  .section-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+  }
+
+  .card-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* ── FLIGHT CONDITIONS ── */
+  .conditions-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .cond-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cond-ap {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    width: 56px;
+    flex-shrink: 0;
+    letter-spacing: 0.06em;
+  }
+
+  .cond-bar-wrap {
+    flex: 1;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    background: var(--bg3);
+  }
+
+  .cond-seg {
+    height: 100%;
+    transition: width 0.6s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cond-seg span {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    color: rgba(0,0,0,0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 0 3px;
+  }
+
+  .cond-legend {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .cond-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted2);
+  }
+
+  .cond-legend-req {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 2px;
+  }
+
+  .cond-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+
+  /* ── REMARKS ── */
+  .remarks-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+  }
+
+  .remarks-ap-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+
+  .remarks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .remarks-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .remarks-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    width: 18px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .remarks-bar-bg {
+    flex: 1;
+    height: 22px;
+    background: var(--bg3);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .remarks-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    min-width: 2px;
+  }
+
+  .remarks-bar-lbl {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    color: rgba(0,0,0,0.75);
+  }
+
+  .remarks-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted2);
+    width: 48px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── AVG DAY ── */
+  .avg-day-select {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  .avg-day-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .avg-day-metar {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg3);
+    border-radius: 8px;
+    padding: 12px 14px;
+    letter-spacing: 0.03em;
+    overflow-wrap: break-word;
+  }
+  .avg-day-cat {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 2px 8px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── WIND AVG ── */
+  .wind-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  /* ── WIND BARB ── */
+  .wind-rose-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .wind-rose-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .wind-rose-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+  }
+  .wind-rose-stats {
+    display: flex;
+    gap: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted2);
+    text-align: center;
+  }
+  .wind-rose-stat-val {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    display: block;
+  }
+
+  /* ── PRECIP ── */
+  .icing-badges {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .icing-badge {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  .icing-badge-ap {
+    color: var(--muted2);
+    margin-bottom: 2px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .icing-badge-count {
+    font-weight: 500;
+    font-size: 16px;
+    color: #fca5a5;
+  }
+
+  .icing-badge-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── CHART CONTAINER ── */
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  /* ── DATA NOTE ── */
+  .data-note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 12px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── VISIBILITY HISTOGRAM ── */
+  .vis-hist-wrap {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .vis-bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .vis-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .vis-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted2);
+    width: 62px;
+    flex-shrink: 0;
+    text-align: right;
+    letter-spacing: 0.04em;
+  }
+
+  .vis-bar-bg {
+    flex: 1;
+    height: 20px;
+    background: var(--bg3);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .vis-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .vis-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    width: 36px;
+    text-align: right;
+  }
+
+  /* ── INTRO ── */
+  .intro {
+    text-align: center;
+    padding: 32px 0 20px;
+  }
+
+  .intro h1 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    letter-spacing: -0.5px;
+    margin-bottom: 10px;
+    line-height: 1.15;
+  }
+
+  .intro h1 span { color: var(--accent); }
+
+  .intro p {
+    color: var(--muted2);
+    font-size: 15px;
+    max-width: 480px;
+    margin: 0 auto 0;
+    line-height: 1.6;
+  }
+
+  /* ── PER-SECTION AIRPORT LEGEND ── */
+  .section-ap-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .section-ap-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--muted2);
+  }
+  .section-ap-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── MOBILE ── */
+  @media (max-width: 600px) {
+    header {
+      padding: 0 16px;
+    }
+    .logo-tag {
+      display: none;
+    }
+    main {
+      padding: 16px 16px 48px;
+    }
+    .intro h1 {
+      font-size: 28px;
+    }
+    .intro p {
+      font-size: 14px;
+    }
+    .input-panel {
+      padding: 20px 16px;
+      border-radius: 12px;
+    }
+    .card {
+      padding: 16px;
+      border-radius: 10px;
+    }
+    .card-grid {
+      grid-template-columns: 1fr;
+    }
+    .section-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    .section-sub {
+      font-size: 12px;
+    }
+    .remarks-card {
+      padding: 16px;
+    }
+    .avg-day-card {
+      padding: 16px;
+    }
+    .wind-rose-card {
+      padding: 16px;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Cloud<span>Base</span></div>
+  <div class="logo-tag">Airport Weather Comparator</div>
+</header>
+
+<main>
+  <div class="intro">
+    <h1>Compare airport<br><span>weather patterns</span></h1>
+    <p>Enter any ICAO codes to compare historical flight conditions, wind, ceiling, visibility, weather phenomena, and typical conditions for any calendar day.</p>
+  </div>
+
+  <!-- INPUT PANEL -->
+  <div class="input-panel">
+    <div class="panel-columns">
+      <div class="panel-airports">
+        <div class="panel-title">Airports to compare <span style="font-weight:400;font-size:11px;color:var(--muted);letter-spacing:0">(up to 3 — enter ICAO codes, e.g. KLAW, KDFW)</span></div>
+        <div class="airports-row" id="airports-row">
+          <!-- inputs added by JS -->
+        </div>
+        <button class="add-btn" onclick="addAirport()" id="add-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Add a third airport
+        </button>
+      </div>
+      <div class="panel-timeperiod">
+        <div class="panel-title">Time period</div>
+        <div class="time-filter" id="time-filter">
+          <span class="filter-label">Years of data</span>
+          <button class="filter-btn active" onclick="setFilter('fiveyear',this)">5 years</button>
+          <button class="filter-btn" onclick="setFilter('tenyear',this)">10 years</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="compare-btn" id="compare-btn" onclick="runComparison()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Compare airports
+      </button>
+    </div>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Fetching METAR data…</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <div class="results-header">
+      <div class="ap-legend" id="ap-legend"></div>
+    </div>
+
+    <!-- 1: FLIGHT CONDITIONS -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Flight conditions</div>
+        <div class="section-sub">% of time in each category</div>
+      </div>
+      <div class="section-ap-legend" id="sal-fc"></div>
+      <div class="cond-legend">
+        <div class="cond-legend-item"><div class="cond-dot" style="background:var(--vfr)"></div>VFR <span class="cond-legend-req">&gt;5SM &amp; &gt;3,000ft</span></div>
+        <div class="cond-legend-item"><div class="cond-dot" style="background:var(--mvfr)"></div>MVFR <span class="cond-legend-req">3–5SM or 1,000–3,000ft</span></div>
+        <div class="cond-legend-item"><div class="cond-dot" style="background:var(--ifr)"></div>IFR <span class="cond-legend-req">1–3SM or 500–1,000ft</span></div>
+        <div class="cond-legend-item"><div class="cond-dot" style="background:var(--lifr)"></div>LIFR <span class="cond-legend-req">&lt;1SM or &lt;500ft</span></div>
+        <div class="cond-legend-item" id="cwx-legend-item" style="display:none"><div class="cond-dot" style="background:rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.3)"></div>CWX (custom)</div>
+      </div>
+      <div class="card">
+        <div class="conditions-grid" id="conditions-grid"></div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px">Custom weather (CWX)</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <label style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2)">Min ceiling</label>
+            <select id="cwx-ceil-select" class="filter-btn" style="width:auto" onchange="onCwxSelChange()">
+              <option value="1000" selected>1,000 ft</option>
+              <option value="2000">2,000 ft</option>
+              <option value="2500">2,500 ft</option>
+              <option value="3000">3,000 ft</option>
+              <option value="3500">3,500 ft</option>
+              <option value="4000">4,000 ft</option>
+              <option value="5000">5,000 ft</option>
+              <option value="6000">6,000 ft</option>
+              <option value="7000">7,000 ft</option>
+              <option value="8000">8,000 ft</option>
+              <option value="9000">9,000 ft</option>
+              <option value="10000">10,000 ft</option>
+            </select>
+            <label style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2)">Min visibility</label>
+            <select id="cwx-vis-select" class="filter-btn" style="width:auto" onchange="onCwxSelChange()">
+              <option value="1">1 SM</option>
+              <option value="3">3 SM</option>
+              <option value="5" selected>5 SM</option>
+              <option value="7">7 SM</option>
+              <option value="10">10 SM</option>
+            </select>
+            <button class="filter-btn" id="cwx-analyze-btn" onclick="analyzeCWX()" style="background:var(--accent);border-color:var(--accent);color:#fff">Analyze CWX</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2: MONTHLY VFR TREND -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Weekly VFR trend</div>
+        <div class="section-sub">% of hours classified VFR (ceiling &gt; 3,000 ft &amp; vis &gt; 5 SM), by week of year</div>
+      </div>
+      <div class="section-ap-legend" id="sal-vfr"></div>
+      <div class="card">
+        <div class="chart-wrap" style="height:290px">
+          <canvas id="monthly-chart"></canvas>
+        </div>
+        <div id="monthly-chart-legend" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);gap:20px;flex-wrap:wrap;align-items:center">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-right:4px">Key</div>
+          <div style="display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2)">
+            <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="var(--muted2)" stroke-width="2"/></svg>VFR %
+          </div>
+          <div id="monthly-cwx-legend-entry" style="display:none;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2)">
+            <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="var(--muted2)" stroke-width="2" stroke-dasharray="5,4"/></svg>CWX %
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3b: CEILING + VISIBILITY CHART -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Cloud ceiling and visibility analysis</div>
+        <div class="section-sub">% of days where ceiling and visibility both met selected thresholds for ≥80% of the day (hours extrapolated between METAR reports)</div>
+      </div>
+      <div class="section-ap-legend" id="sal-ceil"></div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2);letter-spacing:0.06em">Min ceiling</label>
+          <select id="ceiling-alt-select" class="filter-btn" style="width:auto" onchange="onCeilingSelChange()">
+            <option value="500">500 ft</option>
+            <option value="1000">1,000 ft</option>
+            <option value="1500">1,500 ft</option>
+            <option value="2000">2,000 ft</option>
+            <option value="2500">2,500 ft</option>
+            <option value="3000">3,000 ft</option>
+            <option value="3500">3,500 ft</option>
+            <option value="4000">4,000 ft</option>
+            <option value="4500">4,500 ft</option>
+            <option value="5000">5,000 ft</option>
+            <option value="5500">5,500 ft</option>
+            <option value="6000" selected>6,000 ft</option>
+            <option value="6500">6,500 ft</option>
+            <option value="7000">7,000 ft</option>
+            <option value="7500">7,500 ft</option>
+            <option value="8000">8,000 ft</option>
+            <option value="8500">8,500 ft</option>
+            <option value="9000">9,000 ft</option>
+            <option value="9500">9,500 ft</option>
+            <option value="10000">10,000 ft</option>
+            <option value="10500">10,500 ft</option>
+            <option value="11000">11,000 ft</option>
+            <option value="11500">11,500 ft</option>
+            <option value="12000">12,000 ft</option>
+            <option value="12500">12,500 ft</option>
+            <option value="13000">13,000 ft</option>
+            <option value="13500">13,500 ft</option>
+            <option value="14000">14,000 ft</option>
+            <option value="14500">14,500 ft</option>
+            <option value="15000">15,000 ft</option>
+          </select>
+          <label style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2);letter-spacing:0.06em">Min visibility</label>
+          <select id="ceiling-vis-select" class="filter-btn" style="width:auto" onchange="onCeilingSelChange()">
+            <option value="1">1 SM</option>
+            <option value="2">2 SM</option>
+            <option value="3">3 SM</option>
+            <option value="5">5 SM</option>
+            <option value="7" selected>7 SM</option>
+            <option value="10">10 SM</option>
+          </select>
+          <button class="filter-btn" id="ceiling-analyze-btn" onclick="analyzeCeiling()" style="background:var(--accent);border-color:var(--accent);color:#fff">Analyze</button>
+        </div>
+      </div>
+      <div id="ceiling-chart-wrap" style="display:none">
+        <div class="card">
+          <div class="chart-wrap" style="height:240px">
+            <canvas id="ceiling-chart"></canvas>
+          </div>
+          <div style="margin-top:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px">
+            <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="var(--muted)" stroke-width="2"/></svg>
+            Solid line = 7-day rolling average trendline
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5: PRECIP & ICING -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Precipitation &amp; icing</div>
+        <div class="section-sub">% of days with a precipitation or icing event</div>
+      </div>
+      <div class="section-ap-legend" id="sal-precip"></div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-label">Precipitation — % of days with any precip reported</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="precip-chart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Icing — % of days with freezing conditions (FZRA, FZDZ, FZFG)</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="icing-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6: METAR REMARKS / PHENOMENA -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Common weather phenomena</div>
+        <div class="section-sub">Top 10 phenomena — % of days in the dataset they occurred</div>
+      </div>
+      <div class="section-ap-legend" id="sal-phenom"></div>
+      <div class="card" style="margin-bottom:16px" id="phenom-chart-section">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <label style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2);letter-spacing:0.06em">Phenomenon</label>
+          <select id="phenom-select" class="filter-btn" style="width:auto" onchange="renderPhenomChart()"></select>
+        </div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="phenom-chart"></canvas>
+        </div>
+      </div>
+      <div class="card-grid" id="remarks-grid"></div>
+    </div>
+
+    <!-- 4: WIND -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Wind analysis</div>
+        <div class="section-sub">Standard aviation wind barb — shaft points toward origin (FROM direction); feathers encode speed (half-barb = 5 kt, full = 10 kt, pennant = 50 kt)</div>
+        <select id="wind-month-select" class="filter-btn" style="margin-left:auto;width:auto" onchange="applyWindFilter()">
+          <option value="all">All months</option>
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6">June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+      </div>
+      <div class="section-ap-legend" id="sal-wind"></div>
+      <div class="wind-rose-grid" id="wind-rose-grid"></div>
+    </div>
+
+    <div class="section" id="avg-day-section" style="display:none">
+      <div class="section-header">
+        <div class="section-title">Computed average day</div>
+        <div class="section-sub">Estimated typical conditions for a selected calendar day — synthesized from historical METARs within the selected time period</div>
+      </div>
+      <div class="section-ap-legend" id="sal-avg"></div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+        <select id="avgDayMonth" class="avg-day-select" onchange="updateAvgDay()">
+          <option value="">Month…</option>
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6">June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+        <select id="avgDayDay" class="avg-day-select" onchange="updateAvgDay()">
+          <option value="">Day…</option>
+        </select>
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase">Shown in local time</span>
+      </div>
+      <div class="card-grid" id="avg-day-output"></div>
+    </div>
+
+    <p class="data-note" style="text-align:center;padding-bottom:24px">
+      Historical METAR data from the Iowa Environmental Mesonet ASOS archive. Observations are decoded for flight category, ceiling, visibility, wind, and weather phenomena. To eliminate bias from SPECI reporting, analyses collapse observations into one slot per UTC hour per day, then forward/backward-fill gaps — so each clock-hour carries equal weight regardless of how many reports were issued. The Computed Average Day synthesizes a representative METAR by aggregating all observations matching that calendar date across the selected time period.
+    </p>
+
+  </div><!-- /results -->
+
+  <!-- SESSION LOG — persists after results render for diagnostics -->
+  <div id="session-log-panel">
+    <div class="session-log-label">Session log</div>
+    <div class="loading-log" id="loading-log"></div>
+  </div>
+
+</main>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+// One color per airport slot, intentionally distinct from VFR/MVFR/IFR/LIFR colors.
+const AP_COLORS = ['#a855f7','#ec4899','#22d3ee','#a3e635','#fb923c','#d946ef'];
+
+// Current list of ICAO codes entered by the user (up to 3).
+let airports = ['KBFL','KWRI'];
+
+// 'fiveyear' | 'tenyear' — controls the date range sent to the IEM API.
+let activeFilter = 'fiveyear';
+
+// Chart.js instance references — kept so we can destroy before re-rendering.
+let monthlyChart = null;
+let precipChart  = null;
+let ceilingChart = null;
+let icingChart   = null;
+let phenomChart  = null;
+
+// Last CWX weekly breakdown, stored so the weekly VFR chart can redraw the dashed CWX overlay.
+let _lastCwxMonthly = null;
+
+// Currently selected wind month filter ('all' | '1'–'12').
+let _windMonthFilter = 'all';
+
+// ─── DATE / WEEK HELPERS ──────────────────────────────────────────────────────
+// Short month abbreviations used on chart axes.
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Chart.js plugin: hides bar datasets when the viewport is narrower than 768 px (small
+// tablet breakpoint), leaving only the trendlines visible. Uses window.innerWidth rather
+// than canvas pixel width so the threshold is stable regardless of card/padding layout.
+const narrowBarPlugin = {
+  id: 'narrowBar',
+  beforeUpdate(chart) {
+    const narrow = window.innerWidth < 768;
+    chart.data.datasets.forEach(d => { if (d.type === 'bar') d.hidden = narrow; });
+  }
+};
+
+// Returns day-of-year (0-based) for a YYYY-MM-DD string, using UTC math to avoid DST shifts.
+function getDayOfYear(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return Math.floor((Date.UTC(y, m-1, d) - Date.UTC(y, 0, 1)) / 86400000);
+}
+
+// Maps a YYYY-MM-DD date to one of 53 weekly buckets (0–52). The last bucket absorbs Dec 31.
+function getWeekOfYear(dateKey) {
+  return Math.min(52, Math.floor(getDayOfYear(dateKey) / 7));
+}
+
+// Sparse label map: only the weeks that fall at the approximate start of each month get a label.
+// Approx week indices for the 1st of each month (non-leap): Jan=0,Feb=4,Mar=8,Apr=12,...
+const WEEK_MONTH_IDX = {0:'Jan',4:'Feb',8:'Mar',12:'Apr',17:'May',21:'Jun',25:'Jul',30:'Aug',34:'Sep',39:'Oct',43:'Nov',47:'Dec'};
+
+// 53-element array of label strings for the weekly VFR chart X-axis — month name or empty.
+const WEEK_LABELS = Array.from({length:53}, (_, i) => WEEK_MONTH_IDX[i] || '');
+
+// ─── SHARED HELPERS ───────────────────────────────────────────────────────────
+
+// Speed-weighted circular mean wind direction from an array of {drct, sped} obs.
+// Calm obs (sped=0) are excluded so they don't distort the directional result.
+// Returns degrees [0–360) or null when no moving obs are present.
+function circularMeanDir(obs) {
+  const moving = obs.filter(o => !isNaN(o.drct) && !isNaN(o.sped) && o.sped > 0);
+  if (!moving.length) return null;
+  let sinSum = 0, cosSum = 0;
+  moving.forEach(o => { const r = o.drct * Math.PI / 180; sinSum += Math.sin(r) * o.sped; cosSum += Math.cos(r) * o.sped; });
+  return ((Math.atan2(sinSum, cosSum) * 180 / Math.PI) + 360) % 360;
+}
+
+// Median of a pre-sorted numeric array. Does NOT sort in-place.
+function median(sortedArr) {
+  return sortedArr[Math.floor(sortedArr.length / 2)];
+}
+
+// Enable or disable an Analyze button by ID using the app's active/muted visual states.
+function setAnalyzeBtnState(btnId, enabled) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.style.background    = enabled ? 'var(--accent)' : 'var(--bg3)';
+  btn.style.borderColor   = enabled ? 'var(--accent)' : 'var(--border)';
+  btn.style.color         = enabled ? '#fff'          : 'var(--muted)';
+  btn.style.opacity       = enabled ? '1'             : '0.6';
+  btn.style.cursor        = enabled ? 'pointer'       : 'default';
+}
+
+// ─── AIRPORT INPUTS ──────────────────────────────────────────────────────────
+// Rebuilds the airport input row from the `airports` array.
+// Each input is color-coded using AP_COLORS and writes back to airports[i] on every keystroke.
+// The remove button is hidden when only one airport is in the list (minimum required).
+function renderChips() {
+  const row = document.getElementById('airports-row');
+  row.innerHTML = '';
+  const labels = ['Airport 1', 'Airport 2', 'Airport 3'];
+  airports.forEach((code, i) => {
+    const color = AP_COLORS[i % AP_COLORS.length];
+    const wrap = document.createElement('div');
+    wrap.className = 'airport-input-block';
+    wrap.innerHTML = `
+      <div class="airport-block-label" style="color:${color}">${labels[i]}</div>
+      <div class="airport-block-inner">
+        <input class="airport-input-field" type="text" maxlength="4"
+          placeholder="ICAO code"
+          value="${code}"
+          oninput="airports[${i}]=this.value.toUpperCase();this.value=this.value.toUpperCase()"
+          style="border-color:${color}33"
+        />
+        ${airports.length > 1 ? `<button class="airport-remove-btn" onclick="removeAirport(${i})" title="Remove">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>` : ''}
+      </div>`;
+    row.appendChild(wrap);
+  });
+  // When a blank slot was just added, auto-focus it after the DOM settles.
+  if (airports[airports.length-1] === '') {
+    setTimeout(() => {
+      const inputs = row.querySelectorAll('.airport-input-field');
+      if (inputs.length) inputs[inputs.length-1].focus();
+    }, 50);
+  }
+  // Hide the "Add airport" button once the 3-airport maximum is reached.
+  document.getElementById('add-btn').style.display = airports.length >= 3 ? 'none' : 'flex';
+}
+
+// Add an empty airport slot (max 3) and re-render the input row.
+function addAirport() {
+  if (airports.length < 3) { airports.push(''); renderChips(); }
+}
+
+// Remove the airport at index i and re-render.
+function removeAirport(i) {
+  airports.splice(i, 1);
+  renderChips();
+}
+
+// Toggle the 5-year / 10-year time period buttons and update activeFilter.
+function setFilter(type, el) {
+  document.querySelectorAll('#time-filter .filter-btn').forEach(b => b.classList.remove('active'));
+  activeFilter = type;
+  el.classList.add('active');
+}
+
+// ─── DATA FETCHING ────────────────────────────────────────────────────────────
+// IEM ASOS uses 3-letter FAA station IDs for US airports (e.g. LAW not KLAW).
+// For US airports (ICAO = K + 3 letters), strip the leading K.
+// Non-US airports (e.g. EGLL) are passed through unchanged.
+function iemStationId(icao) {
+  if (/^K[A-Z0-9]{3}$/.test(icao)) return icao.slice(1);
+  return icao;
+}
+
+// ─── WEATHER PHENOMENA PARSER ─────────────────────────────────────────────────
+const PHENOMENA_CODES = [
+  { key: 'TS',   label: 'Thunderstorm',       re: /\bTS\b/  },
+  { key: 'TSRA', label: 'Thunderstorm+Rain',  re: /\bTSRA\b/ },
+  { key: 'FG',   label: 'Fog',                re: /\bFG\b/   },
+  { key: 'FZFG', label: 'Freezing fog',       re: /\bFZFG\b/ },
+  { key: 'BR',   label: 'Mist',               re: /\bBR\b/   },
+  { key: 'HZ',   label: 'Haze',               re: /\bHZ\b/   },
+  { key: 'DU',   label: 'Dust',               re: /\bDU\b/   },
+  { key: 'SA',   label: 'Sand',               re: /\bSA\b/   },
+  { key: 'BLDU', label: 'Blowing dust',       re: /\bBLDU\b/ },
+  { key: 'BLSN', label: 'Blowing snow',       re: /\bBLSN\b/ },
+  { key: 'SN',   label: 'Snow',               re: /\bSN\b/   },
+  { key: 'SG',   label: 'Snow grains',        re: /\bSG\b/   },
+  { key: 'RA',   label: 'Rain',               re: /\bRA\b/   },
+  { key: 'DZ',   label: 'Drizzle',            re: /\bDZ\b/   },
+  { key: 'FZRA', label: 'Freezing rain',      re: /\bFZRA\b/ },
+  { key: 'FZDZ', label: 'Freezing drizzle',   re: /\bFZDZ\b/ },
+  { key: 'PL',   label: 'Ice pellets',        re: /\bPL\b/   },
+  { key: 'GR',   label: 'Hail',               re: /\bGR\b/   },
+  { key: 'GS',   label: 'Small hail',         re: /\bGS\b/   },
+  { key: 'IC',   label: 'Ice crystals',       re: /\bIC\b/   },
+  { key: 'FC',   label: 'Funnel cloud',       re: /\bFC\b/   },
+  { key: 'SS',   label: 'Sandstorm',          re: /\bSS\b/   },
+  { key: 'VA',   label: 'Volcanic ash',       re: /\bVA\b/   },
+  { key: 'SQ',   label: 'Squall',             re: /\bSQ\b/   },
+  { key: 'PY',   label: 'Spray',              re: /\bPY\b/   },
+];
+
+// Scan the combined wxcodes field and raw METAR string for known phenomenon codes.
+// Both sources are checked because IEM sometimes omits codes from the wxcodes column
+// that are present in the raw text (e.g. intensity-modified codes like +TSRA).
+// Returns an array of matched keys (e.g. ['TS', 'TSRA', 'RA']).
+function parsePhenomena(wxcodes, metar) {
+  const src = (wxcodes + ' ' + metar).toUpperCase();
+  const found = [];
+  for (const p of PHENOMENA_CODES) {
+    if (p.re.test(src)) found.push(p.key);
+  }
+  return found;
+}
+
+// Fetch raw METAR CSV from the IEM ASOS archive for the given ICAO and active date range.
+// Requested fields: sky cover (3 layers), visibility, wind direction/speed/gust, hourly precip,
+// wx codes, full METAR text, temperature, dewpoint, and altimeter.
+// report_type=3,4 → routine and SPECI (special) observations only (excludes daily summaries).
+async function fetchMETARs(icao) {
+  const now = new Date();
+  const startDate = new Date(now);
+  const years = activeFilter === 'tenyear' ? 10 : 5;
+  startDate.setFullYear(startDate.getFullYear() - years);
+
+  const station = iemStationId(icao);
+  const url = `https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py?station=${station}&data=skyc1&data=skyc2&data=skyc3&data=skyl1&data=skyl2&data=skyl3&data=vsby&data=drct&data=sknt&data=gust&data=p01i&data=wxcodes&data=metar&data=tmpc&data=dwpc&data=alti&year1=${startDate.getFullYear()}&month1=${startDate.getMonth()+1}&day1=${startDate.getDate()}&year2=${now.getFullYear()}&month2=${now.getMonth()+1}&day2=${now.getDate()}&tz=Etc%2FUTC&format=comma&latlon=no&elev=no&missing=M&trace=T&direct=no&report_type=3,4`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${icao}`);
+  const text = await res.text();
+  const { obs, metars } = parseMETARCSV(text, icao, station);
+  return { obs, metars, bytes: text.length };
+}
+
+// In-memory cache: ICAO → runway array for the current page session.
+// Populated by fetchRunways(); cleared automatically when the page unloads.
+const _runwayCache = new Map();
+
+// Fetches runway threshold coordinates for an array of ICAO codes from the OurAirports
+// public dataset (davidmegginson.github.io/ourairports-data).  The ~1 MB CSV is downloaded
+// at most once per page load; per-airport results are cached in _runwayCache so repeated
+// comparison runs never re-fetch.  Returns { ICAO: [{ leLat, leLon, heLat, heLon }, …] }
+// for every requested code; airports not found in the dataset get an empty array.
+// Throws on network failure so the caller can degrade gracefully.
+async function fetchRunways(icaoCodes, logFn) {
+  const log = (msg, cls) => logFn?.(msg, cls);
+  const result = {};
+  const needed = [];
+
+  for (const code of icaoCodes) {
+    if (_runwayCache.has(code)) {
+      result[code] = _runwayCache.get(code);
+      const n = result[code].length;
+      log(`  > ${code}: from cache · ${n} ${n === 1 ? 'runway' : 'runways'}`, 'dim');
+    } else {
+      result[code] = [];
+      needed.push(code);
+    }
+  }
+  if (needed.length === 0) return result;
+
+  log(`  > fetching runways.csv for ${needed.join(', ')}`, 'dim');
+  const res = await fetch('https://davidmegginson.github.io/ourairports-data/runways.csv');
+  if (!res.ok) {
+    log(`  ✗ HTTP ${res.status} ${res.statusText}`, 'head');
+    throw new Error(`OurAirports HTTP ${res.status}`);
+  }
+
+  const text  = await res.text();
+  const lines = text.split('\n');
+  log(`  > HTTP ${res.status} · ${(lines.length - 1).toLocaleString()} rows`, 'dim');
+
+  const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+  const col     = name => headers.indexOf(name);
+  const iIdent  = col('airport_ident');
+  const iClosed = col('closed');
+  const iLeLat  = col('le_latitude_deg');
+  const iLeLon  = col('le_longitude_deg');
+  const iHeLat  = col('he_latitude_deg');
+  const iHeLon  = col('he_longitude_deg');
+
+  if ([iIdent, iLeLat, iLeLon, iHeLat, iHeLon].some(i => i === -1))
+    throw new Error('OurAirports CSV schema mismatch — expected column not found');
+
+  // Accumulate rows for only the airports we need
+  const collected = Object.fromEntries(needed.map(c => [c, []]));
+
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length <= iHeLon) continue;
+    const ident = parts[iIdent].replace(/"/g, '').trim();
+    if (!Object.prototype.hasOwnProperty.call(collected, ident)) continue;
+    if (parts[iClosed]?.trim() === '1') continue; // skip closed runways
+
+    const leLat = parseFloat(parts[iLeLat]);
+    const leLon = parseFloat(parts[iLeLon]);
+    const heLat = parseFloat(parts[iHeLat]);
+    const heLon = parseFloat(parts[iHeLon]);
+    if (!isFinite(leLat) || !isFinite(leLon) || !isFinite(heLat) || !isFinite(heLon)) continue;
+
+    collected[ident].push({ leLat, leLon, heLat, heLon });
+  }
+
+  // Cache and emit per-airport result lines
+  for (const code of needed) {
+    _runwayCache.set(code, collected[code]);
+    result[code] = collected[code];
+    const n = collected[code].length;
+    if (n > 0) log(`  ✓ ${code}: ${n} ${n === 1 ? 'runway' : 'runways'}`, 'ok');
+    else        log(`  ✗ ${code}: not in OurAirports dataset`, 'dim');
+  }
+  return result;
+}
+
+// Fetch station name and IANA timezone from the IEM station metadata API.
+// The timezone is used to convert peak-hour annotations from UTC to local time.
+// Returns { name: null, timezone: null } on any failure so callers degrade gracefully.
+async function fetchStationName(icao) {
+  try {
+    const station = iemStationId(icao);
+    const res = await fetch(`https://mesonet.agron.iastate.edu/api/1/station/${station}.json`);
+    if (!res.ok) return { name: null, timezone: null };
+    const d = await res.json();
+    if (!d.data?.length) return { name: null, timezone: null };
+    const row = d.data[0];
+    // row.tzname is an IANA timezone string e.g. "America/Chicago"
+    return { name: row.name || null, timezone: row.tzname || null };
+  } catch { return { name: null, timezone: null }; }
+}
+
+// Convert a UTC hour (0–23) on a given calendar date to the local hour in the given IANA timezone.
+// Using the date's actual calendar day (not today) ensures DST is applied correctly per observation.
+// The +30-minute offset places us in the middle of the hour to avoid boundary edge cases.
+// The % 24 guards against Intl returning "24" for midnight in some runtime environments.
+function utcHourToLocal(dateKey, utcHour, timezone) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, utcHour, 30));
+  const h = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }).format(dt);
+  return parseInt(h, 10) % 24;
+}
+
+// Parse the IEM ASOS CSV response into an array of observation objects.
+// The IEM CSV format has comment lines starting with '#', a header row beginning with
+// "station,valid,", and then one data row per observation.
+// Missing numeric values are represented by the string "M"; missing sky layers by "CLR" or "SKC".
+// Sky layer heights of 99999 ft are IEM's sentinel for "unlimited / not applicable".
+function parseMETARCSV(text, icao, station) {
+  if (!station) station = icao;
+  const lines = text.split('\n');
+
+  // Locate the header row — it always starts with "station,valid,"
+  let headerIdx = lines.findIndex(l => l.startsWith('station,valid,'));
+  if (headerIdx === -1) throw new Error(`No data found for ${icao} — check the ICAO code is correct`);
+  const headers = lines[headerIdx].split(',');
+
+  // Build column-index lookups by name so the order doesn't matter.
+  const col = name => headers.indexOf(name);
+  const iValid = col('valid');
+  const iSkyc1 = col('skyc1'); const iSkyl1 = col('skyl1'); // sky cover + height, layer 1
+  const iSkyc2 = col('skyc2'); const iSkyl2 = col('skyl2'); // layer 2
+  const iSkyc3 = col('skyc3'); const iSkyl3 = col('skyl3'); // layer 3
+  const iVsby  = col('vsby');    // visibility in statute miles
+  const iDrct  = col('drct');    // wind direction (degrees true)
+  const iSped  = col('sknt');    // wind speed (knots)
+  const iGust  = col('gust');    // gust speed (knots)
+  const iPrecip= col('p01i');    // 1-hour liquid precip accumulation (inches)
+  const iWxcodes=col('wxcodes'); // space-separated present weather codes
+  const iMetar = col('metar');   // full raw METAR string (last column; may contain commas)
+  const iTemp  = col('tmpc');    // temperature (°C)
+  const iDewp  = col('dwpc');    // dewpoint (°C)
+  const iAlti  = col('alti');    // altimeter setting (inches Hg)
+
+  const obs    = []; // parsed observation objects
+  const metars = []; // raw METAR strings (for the loading log flash animation)
+
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    // Skip blank lines, comment lines, and rows from other stations.
+    // Use "station," (with trailing comma) to avoid prefix false-matches
+    // e.g. "LA" matching "LAWTON,..." lines when the intended station is "LAX".
+    if (!line || line.startsWith('#') || !line.startsWith(station + ',')) continue;
+    const parts = line.split(',');
+    // Reject badly truncated rows (allow one short column for METAR which may be absent).
+    if (parts.length < headers.length - 1) continue;
+
+    // Parse the observation timestamp (UTC).
+    const dateStr = parts[iValid];
+    if (!dateStr) continue;
+    const dt = new Date(dateStr.replace(' ', 'T') + 'Z');
+    if (isNaN(dt)) continue;
+    const month = dt.getUTCMonth() + 1; // 1-based
+
+    // Sky layers — heights default to 99999 when the string doesn't parse as a number.
+    const vsby = parseFloat(parts[iVsby]);
+    const skyl1 = parseInt(parts[iSkyl1]) || 99999;
+    const skyl2 = parseInt(parts[iSkyl2]) || 99999;
+    const skyl3 = parseInt(parts[iSkyl3]) || 99999;
+    const skyc1 = parts[iSkyc1] || '';
+    const skyc2 = parts[iSkyc2] || '';
+    const skyc3 = parts[iSkyc3] || '';
+
+    // Ceiling = lowest BKN, OVC, or VV (vertical visibility) layer height.
+    // 99999 means no ceiling (CLR/FEW only), treated as unlimited throughout the app.
+    let ceiling = 99999;
+    [[skyc1,skyl1],[skyc2,skyl2],[skyc3,skyl3]].forEach(([c,l]) => {
+      if ((c === 'BKN' || c === 'OVC' || c === 'VV') && l < ceiling) ceiling = l;
+    });
+
+    // Flight category — ceiling and visibility thresholds are checked independently.
+    // vsby may be NaN when the field is missing; ceiling alone can still lower the category.
+    let cat = 'VFR';
+    if (ceiling < 500  || (!isNaN(vsby) && vsby < 1))  cat = 'LIFR';
+    else if (ceiling < 1000 || (!isNaN(vsby) && vsby < 3))  cat = 'IFR';
+    else if (ceiling <= 3000 || (!isNaN(vsby) && vsby <= 5)) cat = 'MVFR';
+
+    const drct   = parseInt(parts[iDrct]);
+    const sped   = parseInt(parts[iSped]);
+    const gust   = parseInt(parts[iGust]);
+    const precip = parseFloat(parts[iPrecip]);
+    const wxcodes = parts[iWxcodes] || '';
+
+    // The METAR field is the last named column but its value may contain commas (RMK section),
+    // so we rejoin all trailing CSV parts rather than taking just parts[iMetar].
+    const metar = iMetar >= 0 ? parts.slice(iMetar).join(',') : '';
+    if (metar && metar.trim().length > 12) metars.push(metar.trim());
+
+    // Icing: check for freezing precip codes in both wxcodes and the raw METAR remarks.
+    const hasIcing  = /FZRA|FZDZ|FZFG|ICGIC/.test(metar) || /FZ/.test(wxcodes);
+    const hasPrecip = !isNaN(precip) && precip > 0;
+
+    const phenomena = parsePhenomena(wxcodes, metar);
+    const dateKey   = dateStr.replace(/"/g, '').slice(0, 10); // "YYYY-MM-DD"
+    const hour      = dt.getUTCHours();
+    const day       = dt.getUTCDate();
+    const temp      = parseFloat(parts[iTemp]);
+    const dewpoint  = parseFloat(parts[iDewp]);
+    const altimeter = parseFloat(parts[iAlti]);
+
+    // Only keep named sky coverage layers with a valid height (used by computeAverageDay).
+    const skyLayers = [[skyc1,skyl1],[skyc2,skyl2],[skyc3,skyl3]]
+      .filter(([c, h]) => ['FEW','SCT','BKN','OVC','VV'].includes(c) && h < 99999);
+
+    obs.push({ month, day, dateKey, hour, cat, vsby, ceiling, drct, sped, gust,
+               hasPrecip, hasIcing, phenomena, temp, dewpoint, altimeter, skyLayers });
+  }
+
+  if (obs.length < 10) throw new Error(
+    `Insufficient data for ${icao} (found ${obs.length} observations). The station may use a different identifier in IEM.`
+  );
+
+  return { obs, metars };
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+// Aggregates a flat array of parsed METAR observations into all the summary
+// statistics used by every chart and card section.  Returns one stats object
+// per airport; the array of these is stored in _lastStatsArr for on-demand use.
+function computeStats(icao, obs, stationName, timezone) {
+  const total = obs.length || 1; // raw obs count (displayed in legend)
+
+  // ── Flight category tallies (hour-bucketed — computed inside weeklyVFR loop below) ──
+  const catHours = { VFR: 0, MVFR: 0, IFR: 0, LIFR: 0 };
+
+  // ── Weekly VFR % (hour-bucketed) ─────────────────────────────────────────────
+  // Raw METAR archives mix routine hourly reports with SPECI specials, so airports
+  // with more active weather generate more observations per day — biasing a naive
+  // obs-count approach.  Fix: collapse to one category per UTC hour (last obs wins),
+  // forward/backward-fill all 24 slots so every hour is represented, then count
+  // VFR hours out of 24.  Daily hour-scores roll up into 53 weekly buckets.
+  const weeklyVFR = {};
+  const weeklyTotal = {};
+  const dayHourCat = {}; // dateKey → { hour → cat }
+  obs.forEach(o => {
+    if (!dayHourCat[o.dateKey]) dayHourCat[o.dateKey] = {};
+    dayHourCat[o.dateKey][o.hour] = o.cat; // last obs per hour wins (SPECI dedup)
+  });
+  Object.keys(dayHourCat).forEach(dateKey => {
+    const hourMap = dayHourCat[dateKey];
+    const filled = new Array(24).fill(null);
+    Object.entries(hourMap).forEach(([h, cat]) => { filled[parseInt(h)] = cat; });
+    // Forward-fill: propagate each known category forward until the next known one
+    let last = null;
+    for (let h = 0; h < 24; h++) { if (filled[h] !== null) last = filled[h]; else if (last !== null) filled[h] = last; }
+    // Backward-fill: fill leading nulls (hours before the first obs of the day)
+    last = null;
+    for (let h = 23; h >= 0; h--) { if (filled[h] !== null) last = filled[h]; else if (last !== null) filled[h] = last; }
+    const validSlots = filled.filter(c => c !== null);
+    if (!validSlots.length) return; // skip days with no usable data
+    const vfrHours = validSlots.filter(c => c === 'VFR').length;
+    validSlots.forEach(c => { catHours[c]++; });
+    const wk = getWeekOfYear(dateKey);
+    if (weeklyVFR[wk] === undefined) { weeklyVFR[wk] = 0; weeklyTotal[wk] = 0; }
+    weeklyVFR[wk] += vfrHours;
+    weeklyTotal[wk] += validSlots.length;
+  });
+
+  // ── Wind ─────────────────────────────────────────────────────────────────────
+  // Delegate to computeWindStats (which uses speed-weighted circularMeanDir)
+  const { avgWind, avgDir } = computeWindStats(obs, 'all');
+
+  // ── Top 5 phenomena ──────────────────────────────────────────────────────────
+  // Count each phenomenon once per calendar day (a 24-hour fog event = 1 FG day,
+  // not dozens of FG obs).  Also track which local hour each phenomenon appears
+  // most often (for the "peak ~HHL/Z" annotation on each remarks card).
+  const uniqueDays = [...new Set(obs.map(o => o.dateKey))];
+  const totalDays = uniqueDays.length || 1;
+  const phenomDayCounts = {};  // phenomenon key → count of unique days it appeared
+  const phenomHours = {};      // phenomenon key → 24-element hour histogram
+  const dayPhenomSeen = {};    // dateKey → Set of phenomenon keys seen today
+  obs.forEach(o => {
+    if (!dayPhenomSeen[o.dateKey]) dayPhenomSeen[o.dateKey] = new Set();
+    o.phenomena.forEach(p => {
+      // Count each phenomenon only once per calendar day
+      if (!dayPhenomSeen[o.dateKey].has(p)) {
+        dayPhenomSeen[o.dateKey].add(p);
+        phenomDayCounts[p] = (phenomDayCounts[p]||0) + 1;
+      }
+      // Hour histogram: convert UTC→local if timezone is available (DST-aware)
+      if (!phenomHours[p]) phenomHours[p] = new Array(24).fill(0);
+      const lh = timezone ? utcHourToLocal(o.dateKey, o.hour, timezone) : o.hour;
+      phenomHours[p][lh]++;
+    });
+  });
+  // Sort by frequency, take top 10, resolve the peak hour from the histogram
+  const topPhenomena = Object.entries(phenomDayCounts)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, 10)
+    .map(([key, days]) => {
+      const def = PHENOMENA_CODES.find(p => p.key === key);
+      const hours = phenomHours[key] || [];
+      const peakHour = hours.length ? hours.indexOf(Math.max(...hours)) : null;
+      return { key, label: def ? def.label : key, days, pct: days/totalDays*100, peakHour };
+    });
+
+  // Build human-friendly display name: "KLAX — Los Angeles Intl"
+  const displayName = stationName ? `${icao} — ${stationName}` : icao;
+
+  const totalBucketHours = catHours.VFR + catHours.MVFR + catHours.IFR + catHours.LIFR || 1;
+  return {
+    icao, displayName, timezone, total,
+    // Percentages (0–100) for each flight category — hour-bucketed to avoid SPECI bias
+    cats: { VFR: catHours.VFR/totalBucketHours*100, MVFR: catHours.MVFR/totalBucketHours*100, IFR: catHours.IFR/totalBucketHours*100, LIFR: catHours.LIFR/totalBucketHours*100 },
+    // 53-element array of weekly VFR%, indexed by ISO week number; null for weeks with no data
+    weeklyVFR: Array.from({length:53},(_,i)=>weeklyTotal[i] ? (weeklyVFR[i]||0)/weeklyTotal[i]*100 : null),
+    avgWind, avgDir,
+    topPhenomena,
+    rawObs: obs  // retained for on-demand ceiling/CWX analysis
+  };
+}
+
+// computeDailyCeiling removed — ceiling analysis is now on-demand via analyzeCeiling()
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+// Top-level render dispatcher — called once after all airports finish loading.
+// Sequences every chart/card section in the correct DOM order, seeds UI state
+// (legend, selectors, CWX toggle), and fires the initial ceiling analysis.
+function renderResults(statsArr, logFn) {
+  const codes = statsArr.map(s => s.icao);
+
+  // Wraps each render sub-call: logs ✓ on success, ✗ with message on any throw.
+  // Errors are caught per-section so one bad render doesn't abort the rest.
+  const step = (label, fn) => {
+    try   { fn(); logFn?.(`  ✓ ${label}`, 'dim'); }
+    catch (e) { logFn?.(`  ✗ ${label}: ${e.message}`, 'head'); }
+  };
+
+  logFn?.('[render]', 'head');
+
+  // Stash for on-demand re-render triggered by ceiling/CWX analyze buttons
+  _lastStatsArr = statsArr;
+
+  // Destroy any stale ceiling chart from a previous comparison run
+  if (ceilingChart) { ceilingChart.destroy(); ceilingChart = null; }
+  document.getElementById('ceiling-chart-wrap').style.display = 'none';
+
+  // ── Airport color legend (top of results) ────────────────────────────────────
+  // Each airport gets a colored dot + full display name + raw obs count subtitle
+  const legend = document.getElementById('ap-legend');
+  legend.innerHTML = '';
+  statsArr.forEach((s, i) => {
+    const c = AP_COLORS[i];
+    legend.innerHTML += `<div class="ap-legend-item" style="flex-direction:column;align-items:flex-start;gap:2px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="ap-dot" style="background:${c};flex-shrink:0"></div><span>${s.displayName}</span>
+      </div>
+      <div style="padding-left:23px;font-family:'DM Mono',monospace;font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0.03em">${s.total.toLocaleString()} obs</div>
+    </div>`;
+  });
+
+  // ── Per-section airport color legends ────────────────────────────────────────
+  // Compact dot + ICAO repeated under each section header so users don't have
+  // to scroll back to the top to remember which color belongs to which airport.
+  const salHTML = statsArr.map((s, i) =>
+    `<div class="section-ap-legend-item">
+      <div class="section-ap-dot" style="background:${AP_COLORS[i]}"></div>${s.icao}
+    </div>`
+  ).join('');
+  ['sal-fc','sal-vfr','sal-ceil','sal-precip','sal-phenom','sal-wind','sal-avg']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = salHTML; });
+
+  // ── Reset transient UI state for the new dataset ──────────────────────────────
+  _lastCwxMonthly = null;      // clear any CWX overlay from a previous run
+  _windMonthFilter = 'all';    // reset wind month filter to "all months"
+  const windSel = document.getElementById('wind-month-select');
+  if (windSel) windSel.value = 'all';
+
+  // Show Avg-Day section, reset selectors to July 4 (a representative summer date)
+  document.getElementById('avg-day-section').style.display = 'block';
+  document.getElementById('avg-day-output').innerHTML = '';
+  document.getElementById('avgDayMonth').value = '7';
+  document.getElementById('avgDayDay').innerHTML = '<option value="">Day…</option>' +
+    Array.from({length:31}, (_,i) => i+1)
+      .map(d => `<option value="${d}"${d===4?' selected':''}>${d}</option>`).join('');
+
+  // ── Render all sections sequentially ─────────────────────────────────────────
+  step('flight conditions',  () => renderConditions(statsArr, null));
+  step('weekly VFR chart',   () => renderMonthlyChart(statsArr, null));
+  step('wind analysis',      () => renderWind(statsArr));
+  step('precip & icing',     () => renderPrecip(statsArr));
+  step('phenomena',          () => renderRemarks(statsArr));
+  step('average day',        () => renderAverageDay(7, 4));
+  step('ceiling analysis',   () => { onCeilingSelChange(); analyzeCeiling(); });
+}
+
+// ── 1: FLIGHT CONDITIONS ──────────────────────────────────────────────────────
+// Renders the horizontal stacked category bars (VFR/MVFR/IFR/LIFR) for each airport.
+// When cwxPcts is non-null (after "Analyze CWX" is clicked), a white CWX segment is
+// carved from the left of the bar to show the user-defined ceiling/vis threshold.
+function renderConditions(statsArr, cwxPcts) {
+  const grid = document.getElementById('conditions-grid');
+  grid.innerHTML = '';
+
+  // Only show CWX overlay if we have a valid pct value for every airport
+  const showCWX = cwxPcts && cwxPcts.length === statsArr.length;
+  document.getElementById('cwx-legend-item').style.display = showCWX ? 'flex' : 'none';
+
+  statsArr.forEach((s, i) => {
+    const color = AP_COLORS[i];
+    const row = document.createElement('div');
+    row.className = 'cond-row';
+    const vfrPct  = s.cats.VFR;
+    const mvfrPct = s.cats.MVFR;
+    const ifrPct  = s.cats.IFR;
+    const lifrPct = s.cats.LIFR;
+
+    // ── CWX overlay math ───────────────────────────────────────────────────────
+    // CWX is a white segment carved from the good-weather end of the bar.
+    //   If CWX% ≤ VFR%:  bar = [CWX | VFR-CWX | MVFR | IFR | LIFR]  (always 100%)
+    //   If CWX% > VFR%:  CWX spills into the MVFR segment; remaining segs shrink.
+    let cwxW = 0, vfrW = vfrPct, mvfrW = mvfrPct, ifrW = ifrPct, lifrW = lifrPct;
+    if (showCWX) {
+      cwxW = cwxPcts[i];
+      const fromVFR = Math.min(cwxW, vfrW);
+      vfrW -= fromVFR;
+      const remaining = cwxW - fromVFR; // any CWX that overflows into MVFR
+      mvfrW = Math.max(0, mvfrW - remaining);
+    }
+
+    // Helper: emit one <div> segment with percentage width and inline label
+    const fmt = v => v.toFixed(1);
+    const seg = (w, bg, extra='') => {
+      const label = w > 5 ? fmt(w)+'%' : ''; // only show label if wide enough
+      const textColor = bg === 'rgba(255,255,255,0.9)' ? 'color:rgba(0,0,0,0.75)' : '';
+      return `<div class="cond-seg" style="width:${fmt(w)}%;background:${bg};${extra}">
+        <span style="${textColor}">${label}</span>
+      </div>`;
+    };
+
+    const cwxLabel = showCWX ? fmt(cwxPcts[i]) : '';
+    row.innerHTML = `
+      <div class="cond-ap" style="color:${color}">${s.icao}</div>
+      <div class="cond-bar-wrap">
+        ${showCWX && cwxW > 0 ? seg(cwxW, 'rgba(255,255,255,0.9)', 'border-right:1px solid rgba(0,0,0,0.15)') : ''}
+        ${vfrW > 0 ? seg(vfrW, 'var(--vfr)') : ''}
+        ${mvfrW > 0 ? seg(mvfrW, 'var(--mvfr)') : ''}
+        ${ifrW > 0 ? seg(ifrW, 'var(--ifr)') : ''}
+        ${lifrW > 0 ? seg(lifrW, 'var(--lifr)') : ''}
+      </div>
+      ${showCWX ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);margin-left:4px;flex-shrink:0">CWX ${cwxLabel}%</div>` : ''}`;
+    grid.appendChild(row);
+  });
+}
+
+// Returns { weekly: 53-element array of CWX% per week, overallPct: aggregate CWX% }.
+// CWX = conditions met threshold: ceiling ≥ minCeil AND visibility ≥ minVis.
+// Uses the same hour-bucketing as the flight-category bars: one slot per UTC hour per day
+// (last obs wins, eliminating SPECI bias), forward/backward-filled across each day.
+// Missing ceiling: o.ceiling = 99999 (CLR/FEW), always passes any reasonable threshold.
+// Missing visibility (NaN): treated as passing — same policy as flight-category assignment.
+// Vis boundary: >= minVis (personal-minimums check); flight categories use the FAA boundary
+// where vis ≤ 5 SM is MVFR and vis > 5 SM is VFR — both are internally consistent.
+function computeWeeklyCWX(rawObs, minCeil, minVis) {
+  const weekMet   = {};  // ISO week → hours meeting CWX threshold
+  const weekTotal = {};  // ISO week → total filled hours
+  let totalMet = 0, totalHours = 0;
+
+  // Collapse to one slot per UTC hour per day; last obs wins (deduplicates SPECIs).
+  const dayHourMet = {}; // dateKey → { hour → bool }
+  rawObs.forEach(o => {
+    if (!dayHourMet[o.dateKey]) dayHourMet[o.dateKey] = {};
+    const ceilOk = o.ceiling >= minCeil;
+    const visOk  = isNaN(o.vsby) || o.vsby >= minVis; // missing vis → assume passing
+    dayHourMet[o.dateKey][o.hour] = ceilOk && visOk;
+  });
+
+  Object.keys(dayHourMet).forEach(dateKey => {
+    const hourMap = dayHourMet[dateKey];
+    const filled  = new Array(24).fill(null);
+    Object.entries(hourMap).forEach(([h, met]) => { filled[parseInt(h)] = met; });
+    // Forward-fill: propagate the last known value forward through the day
+    let last = null;
+    for (let h = 0; h < 24; h++) { if (filled[h] !== null) last = filled[h]; else if (last !== null) filled[h] = last; }
+    // Backward-fill: fill leading nulls (hours before the first obs of the day)
+    last = null;
+    for (let h = 23; h >= 0; h--) { if (filled[h] !== null) last = filled[h]; else if (last !== null) filled[h] = last; }
+    const validSlots = filled.filter(s => s !== null);
+    if (!validSlots.length) return;
+    const metCount = validSlots.filter(Boolean).length;
+    totalMet   += metCount;
+    totalHours += validSlots.length;
+    const wk = getWeekOfYear(dateKey);
+    if (weekMet[wk] === undefined) { weekMet[wk] = 0; weekTotal[wk] = 0; }
+    weekMet[wk]   += metCount;
+    weekTotal[wk] += validSlots.length;
+  });
+
+  return {
+    weekly:     Array.from({length: 53}, (_, i) => weekTotal[i] ? (weekMet[i] || 0) / weekTotal[i] * 100 : null),
+    overallPct: totalHours ? totalMet / totalHours * 100 : 0,
+  };
+}
+
+// Triggered by the "Analyze CWX" button.  Reads the user-selected ceiling/vis thresholds,
+// computes CWX % for every airport in one pass, then redraws the conditions bars and
+// weekly VFR chart with the CWX overlay.  Greys the button until a selection changes.
+function analyzeCWX() {
+  if (!_lastStatsArr) return;
+  const minCeil = parseInt(document.getElementById('cwx-ceil-select').value);
+  const minVis  = parseFloat(document.getElementById('cwx-vis-select').value);
+  // computeWeeklyCWX returns both weekly breakdown and overall % — no second pass needed
+  const cwxResults = _lastStatsArr.map(s => computeWeeklyCWX(s.rawObs, minCeil, minVis));
+  const cwxPcts    = cwxResults.map(r => r.overallPct);
+  _lastCwxMonthly  = cwxResults.map(r => r.weekly);
+  renderConditions(_lastStatsArr, cwxPcts);
+  renderMonthlyChart(_lastStatsArr, _lastCwxMonthly);
+  // Grey out button until a selection changes
+  setAnalyzeBtnState('cwx-analyze-btn', false);
+}
+
+// ── 2: WEEKLY VFR TREND ───────────────────────────────────────────────────────
+// Line chart of VFR% by ISO week number (1–53).  When cwxMonthly is provided
+// (after "Analyze CWX"), dashed lines for each airport's CWX% are added as
+// additional datasets using the same airport color at reduced opacity/thickness.
+function renderMonthlyChart(statsArr, cwxMonthly) {
+  if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+  const ctx = document.getElementById('monthly-chart').getContext('2d');
+
+  // One solid line per airport — VFR% across the 53-week year
+  const datasets = statsArr.map((s, i) => ({
+    label: s.icao,
+    data: s.weeklyVFR,
+    borderColor: AP_COLORS[i],
+    backgroundColor: AP_COLORS[i] + '18', // faint fill under the line
+    borderWidth: 2,
+    pointRadius: 0,
+    pointHoverRadius: 5,
+    tension: 0.3,
+    fill: false,
+    spanGaps: true, // bridge null weeks (insufficient data) with a gap-less line
+  }));
+
+  // Add dashed CWX overlay datasets when a threshold is active
+  if (cwxMonthly) {
+    cwxMonthly.forEach((weekly, i) => {
+      datasets.push({
+        label: statsArr[i].icao + ' CWX',
+        data: weekly,
+        borderColor: AP_COLORS[i],
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [5, 4],  // dashed to distinguish from solid VFR line
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.3,
+        fill: false,
+        spanGaps: true,
+      });
+    });
+  }
+
+  // Show CWX legend key only when CWX overlay is active
+  const legendEl = document.getElementById('monthly-chart-legend');
+  const cwxLegendEntry = document.getElementById('monthly-cwx-legend-entry');
+  if (legendEl) legendEl.style.display = 'flex';
+  if (cwxLegendEntry) cwxLegendEntry.style.display = cwxMonthly ? 'flex' : 'none';
+
+  monthlyChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: WEEK_LABELS, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }, // custom HTML legend used instead
+        tooltip: { mode: 'index', intersect: false,
+          backgroundColor: '#1a1e28', borderColor: '#ffffff14', borderWidth: 1,
+          titleColor: '#9ca3af', bodyColor: '#e8eaf0',
+          callbacks: {
+            title: items => {
+              const wk = items[0].dataIndex;
+              return `Week ${wk + 1}`;
+            },
+            label: ctx => {
+              // Append "% CWX" or "% VFR" depending on dataset type
+              const isCWX = ctx.dataset.label.endsWith(' CWX');
+              const suffix = isCWX ? '% CWX' : '% VFR';
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(1)+suffix : 'N/A'}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#ffffff08' },
+          ticks: {
+            color: '#6b7280',
+            font: { family: 'DM Mono', size: 11 },
+            maxRotation: 45,
+            minRotation: 45,
+            autoSkip: false,
+            callback: (val, idx) => WEEK_LABELS[idx] || null, // WEEK_LABELS has month labels at week boundaries
+          }
+        },
+        y: { min: 0, max: 100, grid: { color: '#ffffff08' },
+          ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 11 }, callback: v => v+'%' } }
+      }
+    }
+  });
+}
+
+// Called by the wind month selector; re-renders wind roses for the chosen month filter.
+function applyWindFilter() {
+  if (!_lastStatsArr) return;
+  _windMonthFilter = document.getElementById('wind-month-select').value;
+  renderWind(_lastStatsArr);
+}
+
+// Returns { avgWind, avgDir, count } for the given observations, optionally filtered
+// to a single month (monthFilter = 'all' | '1'..'12').
+// avgWind = scalar mean of all speed values (including calm).
+// avgDir  = speed-weighted circular mean direction (null if all obs are calm).
+function computeWindStats(obs, monthFilter) {
+  const filtered = monthFilter === 'all' ? obs : obs.filter(o => o.month === parseInt(monthFilter));
+  const windObs = filtered.filter(o => !isNaN(o.sped) && o.sped >= 0);
+  const avgWind = windObs.length ? windObs.reduce((a, o) => a + o.sped, 0) / windObs.length : 0;
+  return { avgWind, avgDir: circularMeanDir(filtered), count: filtered.length };
+}
+
+// ── 3: WIND — mean wind barb ─────────────────────────────────────────────────
+// Renders one barb card per airport with a <canvas> and numerical mean speed/direction.
+function renderWind(statsArr) {
+  const grid = document.getElementById('wind-rose-grid');
+  grid.innerHTML = '';
+  statsArr.forEach((s, i) => {
+    const color = AP_COLORS[i];
+    const ws = computeWindStats(s.rawObs, _windMonthFilter);
+    const card = document.createElement('div');
+    card.className = 'wind-rose-card';
+    card.innerHTML = `
+      <div class="wind-rose-label" style="color:${color}">${s.icao}</div>
+      <canvas id="wrose-${i}" width="160" height="160"></canvas>
+      <div class="wind-rose-stats">
+        <div>
+          <span class="wind-rose-stat-val" style="color:${color}">${ws.avgWind.toFixed(1)}</span>
+          avg kt
+        </div>
+        <div>
+          <span class="wind-rose-stat-val" style="color:${color}">${ws.avgDir !== null ? Math.round(ws.avgDir)+'°' : 'VAR'}</span>
+          mean dir
+        </div>
+      </div>`;
+    grid.appendChild(card);
+    requestAnimationFrame(() => drawWindBarb(`wrose-${i}`, ws.avgDir, ws.avgWind, color, s.runways));
+  });
+}
+
+// Draws the airport runway layout as a background layer behind the wind barb.
+// Projects each runway's threshold coordinates (lat/lon) onto the canvas using a
+// flat-earth approximation (accurate to within ~1 m across a typical airport footprint).
+// The layout is centered on the centroid of all threshold points, scaled so the widest
+// dimension fills 80% of the canvas, and oriented north-up — the same reference frame
+// as METAR wind directions, so the barb and runways are directly comparable.
+// Exits immediately if runways is empty; callers don't need to guard against that.
+function drawRunwayLayout(ctx, cx, cy, runways) {
+  if (!runways || runways.length === 0) return;
+
+  // Centroid of all threshold points → canvas center
+  let sumLat = 0, sumLon = 0;
+  runways.forEach(r => { sumLat += r.leLat + r.heLat; sumLon += r.leLon + r.heLon; });
+  const nPts  = runways.length * 2;
+  const refLat = sumLat / nPts;
+  const refLon = sumLon / nPts;
+
+  // Flat-earth projection: degrees → meters, north-up (negate y so north = canvas-up)
+  const cosLat = Math.cos(refLat * Math.PI / 180);
+  const M      = 111320; // meters per degree of latitude
+  const project = (lat, lon) => ({
+    x:  (lon - refLon) * cosLat * M,
+    y: -(lat - refLat) * M,
+  });
+
+  // Find bounding box of all projected thresholds
+  const pts = runways.flatMap(r => [project(r.leLat, r.leLon), project(r.heLat, r.heLon)]);
+  const xs  = pts.map(p => p.x);
+  const ys  = pts.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+  // Center of bounding box — not necessarily the same as the centroid of points.
+  // Using the bbox center ensures all endpoints are symmetrically within the canvas.
+  const bbCx = (minX + maxX) / 2;
+  const bbCy = (minY + maxY) / 2;
+
+  const maxExtent = Math.max(maxX - minX, maxY - minY, 1);
+
+  // Scale so widest dimension fills 75% of canvas (leaves room for 5px line caps at edges)
+  const scale = (cx * 2 * 0.75) / maxExtent;
+
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = 5;
+  ctx.lineCap     = 'round';
+  ctx.globalAlpha = 0.18;
+
+  runways.forEach(r => {
+    const le = project(r.leLat, r.leLon);
+    const he = project(r.heLat, r.heLon);
+    ctx.beginPath();
+    ctx.moveTo(cx + (le.x - bbCx) * scale, cy + (le.y - bbCy) * scale);
+    ctx.lineTo(cx + (he.x - bbCx) * scale, cy + (he.y - bbCy) * scale);
+    ctx.stroke();
+  });
+
+  ctx.restore();
+}
+
+// Draws a standard aviation wind barb on a canvas, with an optional runway layout
+// rendered first as a background layer.
+//   dirDeg  – meteorological FROM direction (0–360); null/NaN → calm symbol
+//   speedKt – mean speed in knots; < 2.5 → calm (two concentric circles, no shaft)
+//   color   – CSS color string
+//   runways – array of { leLat, leLon, heLat, heLon } from OurAirports (may be empty)
+//
+// Barb convention (WMO/aviation standard):
+//   Shaft extends from the station dot toward the FROM direction.
+//   Feathers are on the right side of the shaft when looking from station → FROM.
+//   Half-barb = 5 kt · Full barb = 10 kt · Filled pennant = 50 kt
+//   Speed is rounded to the nearest 5 kt before decoding feathers.
+function drawWindBarb(canvasId, dirDeg, speedKt, color, runways) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  ctx.clearRect(0, 0, W, H);
+  drawRunwayLayout(ctx, cx, cy, runways); // runway background layer first; barb drawn on top
+
+  const calm = speedKt < 2.5 || dirDeg === null || isNaN(dirDeg) || isNaN(speedKt);
+  if (calm) {
+    // Calm: two concentric circles (WMO standard calm symbol)
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.stroke();
+    return;
+  }
+
+  // Met convention → canvas angle: 0°=N clockwise → subtract 90° so N points up
+  const shaftAngle = (dirDeg - 90) * (Math.PI / 180);
+
+  const SHAFT    = Math.min(W, H) * 0.42;  // shaft length from station dot to tip
+  const FULL     = SHAFT * 0.42;            // full-barb arm length
+  const HALF     = SHAFT * 0.22;            // half-barb arm length
+  const SPACING  = SHAFT * 0.17;           // spacing between feathers along shaft
+
+  // Right-side perpendicular: when looking from station toward FROM, feathers go right
+  const perp = shaftAngle + Math.PI / 2;
+
+  // Tip = far end of shaft (FROM direction); station dot = center
+  const tipX = cx + Math.cos(shaftAngle) * SHAFT;
+  const tipY = cy + Math.sin(shaftAngle) * SHAFT;
+
+  // Station dot
+  ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = color; ctx.fill();
+
+  // Shaft
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tipX, tipY);
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineCap = 'square'; ctx.stroke();
+
+  // Decode speed: round to nearest 5 kt, then extract pennants / fulls / halfs
+  let spd = Math.max(0, Math.round(speedKt / 5) * 5);
+  const pennants = Math.floor(spd / 50); spd %= 50;
+  const fulls    = Math.floor(spd / 10); spd %= 10;
+  const halfs    = Math.floor(spd / 5);
+
+  // Helper: canvas point at distance d from tip along the shaft toward station
+  const pt = d => ({
+    x: tipX - Math.cos(shaftAngle) * d,
+    y: tipY - Math.sin(shaftAngle) * d,
+  });
+
+  let pos = 0; // distance from tip inward along shaft
+
+  // ── Pennants (filled triangles, stacked from tip inward) ─────────────────────
+  for (let i = 0; i < pennants; i++) {
+    const base = pt(pos);
+    const apex = pt(pos + SPACING * 1.5);
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.lineTo(base.x + Math.cos(perp) * FULL, base.y + Math.sin(perp) * FULL);
+    ctx.lineTo(apex.x, apex.y);
+    ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+    pos += SPACING * 1.6;
+  }
+  if (pennants > 0) pos += SPACING * 0.4; // gap after pennant group
+
+  // ── Full barbs ────────────────────────────────────────────────────────────────
+  for (let i = 0; i < fulls; i++) {
+    const p = pt(pos);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + Math.cos(perp) * FULL, p.y + Math.sin(perp) * FULL);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke();
+    pos += SPACING;
+  }
+
+  // ── Half barb (always last, only one possible) ────────────────────────────────
+  for (let i = 0; i < halfs; i++) {
+    // For 5 kt alone: place at a fixed offset from tip so there's visual separation
+    if (fulls === 0 && pennants === 0) pos = SPACING;
+    const p = pt(pos);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + Math.cos(perp) * HALF, p.y + Math.sin(perp) * HALF);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke();
+    pos += SPACING;
+  }
+}
+
+// ── 3b: CEILING CHART — on-demand analysis ───────────────────────────────────
+// Retained between renders so analyzeCeiling() and analyzeCWX() can access the data
+// from the most recent comparison run without re-fetching.
+let _lastStatsArr = null;
+
+// Window size (in days) for the rolling-average trendline overlaid on bar charts.
+// Applied to ceiling, precip, and icing charts.
+const ROLLING_WINDOW = 7;
+
+// Builds a Chart.js tooltip config for charts that mix daily bars with a rolling-average
+// trendline.  On wide screens the bars are visible, so the tooltip shows bar values.
+// On narrow screens the narrowBarPlugin hides bars, so the tooltip flips to show the
+// trendline value instead, with a title that names the ±3-day window it averages over.
+//   useDOY    – true when x-axis labels are MM-DD day-of-year keys (multi-year datasets)
+//   wideSuffix – text appended after the % value on wide screens only (e.g. "of days had precip")
+function makeBarTrendTooltip(useDOY, wideSuffix) {
+  return {
+    mode: 'index', intersect: false,
+    backgroundColor: '#1a1e28', borderColor: '#ffffff14', borderWidth: 1,
+    titleColor: '#9ca3af', bodyColor: '#e8eaf0',
+    filter: item => {
+      const narrow = window.innerWidth < 768;
+      return narrow
+        ? item.dataset.label.endsWith(' trend')   // narrow: show only trendlines
+        : !item.dataset.label.endsWith(' trend');  // wide: show only bars
+    },
+    callbacks: {
+      title: items => {
+        const lbl = items[0].label; // "MM-DD"
+        if (window.innerWidth < 768) {
+          // Title shows the date window the rolling average spans (center ± half-window)
+          const [mm, dd] = lbl.split('-').map(Number);
+          const half   = Math.floor(ROLLING_WINDOW / 2);
+          const center = new Date(2001, mm - 1, dd); // 2001 = arbitrary non-leap reference year
+          const start  = new Date(center); start.setDate(center.getDate() - half);
+          const end    = new Date(center); end.setDate(center.getDate()   + half);
+          const fmt    = d => `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+          return `${fmt(start)} – ${fmt(end)} (avg)`;
+        }
+        return (useDOY ? 'Day of year ' : '') + lbl;
+      },
+      label: c => {
+        const narrow = window.innerWidth < 768;
+        const name   = c.dataset.label.replace(/ trend$/, ''); // strip " trend" suffix on narrow
+        const pct    = c.parsed.y != null ? c.parsed.y.toFixed(narrow ? 1 : 0) + '%' : 'N/A';
+        const suffix = (!narrow && wideSuffix) ? ' ' + wideSuffix : '';
+        return ` ${name}: ${pct}${suffix}`;
+      }
+    }
+  };
+}
+
+// Centered rolling average over an array of nullable values.
+// Returns an array of the same length; positions where the window is entirely null return null.
+function rollingAvg(data, window) {
+  const half = Math.floor(window / 2);
+  return data.map((_, i) => {
+    const slice = [];
+    for (let j = i - half; j <= i + half; j++) {
+      if (j >= 0 && j < data.length && data[j] != null) slice.push(data[j]);
+    }
+    return slice.length > 0 ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
+  });
+}
+
+// Re-enable the ceiling/CWX analyze buttons when the user changes a selector value
+function onCeilingSelChange() { setAnalyzeBtnState('ceiling-analyze-btn', true); }
+function onCwxSelChange()    { setAnalyzeBtnState('cwx-analyze-btn',     true); }
+
+// Triggered by the "Analyze" button.
+// Scores each calendar day as pass/fail: a day "passes" if ≥80% of its 24 filled
+// hourly slots have BOTH ceiling ≥ altFt AND visibility ≥ minVis.
+// Ceiling and visibility arrays are filled independently; a slot with missing vis
+// after fill does not penalize the ceiling score (vis null → vis condition passes).
+// Aggregates across years into day-of-year percentages when dataset spans > 400 days.
+function analyzeCeiling() {
+  if (!_lastStatsArr) return;
+  const altFt  = parseInt(document.getElementById('ceiling-alt-select').value);
+  const minVis = parseFloat(document.getElementById('ceiling-vis-select').value);
+  if (ceilingChart) { ceilingChart.destroy(); ceilingChart = null; }
+
+  // Helper: build a 24-slot array from a sparse { hour → value } map,
+  // then forward/backward-fill nulls so every hour is represented.
+  // Defined outside the per-airport loop to avoid function-declaration-in-block semantics.
+  const fillHours = map => {
+    const arr = new Array(24).fill(null);
+    Object.entries(map).forEach(([h, v]) => { arr[parseInt(h)] = v; });
+    let last = null;
+    for (let h = 0;  h < 24; h++) { if (arr[h] !== null) last = arr[h]; else if (last !== null) arr[h] = last; }
+    last = null;
+    for (let h = 23; h >= 0; h--) { if (arr[h] !== null) last = arr[h]; else if (last !== null) arr[h] = last; }
+    return arr;
+  };
+
+  const allDates = new Set();
+  // Each element of airportDayData[i] corresponds exclusively to _lastStatsArr[i].rawObs.
+  // No shared state between airports — each airport gets its own byDay object.
+  const airportDayData = _lastStatsArr.map(s => {
+    const byDay = {};
+    // ── Step 1: Collapse to one value per UTC hour per day (SPECI dedup) ─────
+    // Store ceiling and visibility in separate hour maps so each can be
+    // forward/backward-filled independently (vis is sometimes missing from obs).
+    s.rawObs.forEach(o => {
+      if (!byDay[o.dateKey]) byDay[o.dateKey] = { ceilMap: {}, visMap: {} };
+      byDay[o.dateKey].ceilMap[o.hour] = o.ceiling >= 99999 ? 99999 : o.ceiling;
+      if (!isNaN(o.vsby)) byDay[o.dateKey].visMap[o.hour] = o.vsby; // only store valid vis
+      allDates.add(o.dateKey);
+    });
+    // ── Step 2: Forward/backward-fill both arrays, then score ────────────────
+    Object.keys(byDay).forEach(d => {
+      const { ceilMap, visMap } = byDay[d];
+      const ceilFilled = fillHours(ceilMap);
+      const visFilled  = fillHours(visMap);
+
+      // A slot passes if ceiling meets the threshold AND vis meets the threshold.
+      // Null vis after fill (entire day had no vis obs) is treated as passing —
+      // missing data should not falsely penalize the score.
+      let met = 0;
+      for (let h = 0; h < 24; h++) {
+        const ceilOk = ceilFilled[h] !== null && ceilFilled[h] >= altFt;
+        const visOk  = visFilled[h]  === null  || visFilled[h]  >= minVis;
+        if (ceilOk && visOk) met++;
+      }
+      byDay[d] = { passed: met / 24 >= 0.8 ? 1 : 0 };
+    });
+    return byDay;
+  });
+
+  // ── Step 3: Choose label strategy based on date range ──────────────────────
+  // > 400 unique dates → multi-year dataset: group by MM-DD (day-of-year) and
+  // express values as "% of years this calendar day passed the threshold".
+  // ≤ 400 dates → short/single-year: show each date individually as 0% or 100%.
+  const sortedDates = [...allDates].sort();
+  const useDOY = sortedDates.length > 400;
+  let labels, barData;
+
+  if (useDOY) {
+    // Aggregate pass/fail counts per MM-DD, track distinct years for the denominator
+    const doyDataPerAp = _lastStatsArr.map((s, i) => {
+      const byDOY = {};
+      const byDay = airportDayData[i];
+      Object.keys(byDay).forEach(dateKey => {
+        const entry = byDay[dateKey];
+        if (!entry) return;
+        const mmdd = dateKey.slice(5); // "MM-DD" from "YYYY-MM-DD"
+        if (!byDOY[mmdd]) byDOY[mmdd] = { passed: 0, years: new Set() };
+        byDOY[mmdd].years.add(dateKey.slice(0, 4)); // track year for denominator
+        if (entry.passed) byDOY[mmdd].passed++;
+      });
+      return byDOY;
+    });
+    // Union of all MM-DD keys across airports → sorted labels
+    const allDOY = new Set();
+    doyDataPerAp.forEach(d => Object.keys(d).forEach(k => allDOY.add(k)));
+    labels = [...allDOY].sort();
+    // Value = (days passed) / (years with data on this date) * 100
+    barData = _lastStatsArr.map((s, i) =>
+      labels.map(d => {
+        const entry = doyDataPerAp[i][d];
+        if (!entry || !entry.years.size) return null;
+        return (entry.passed / entry.years.size) * 100;
+      })
+    );
+  } else {
+    // Short dataset: each date is an individual bar, 0% or 100%
+    labels = sortedDates.map(d => d.slice(5));
+    barData = _lastStatsArr.map((s, i) =>
+      sortedDates.map(d => {
+        const entry = airportDayData[i][d];
+        return entry ? entry.passed * 100 : null;
+      })
+    );
+  }
+
+  // Thin bars for dense multi-year datasets; auto-size for short date ranges
+  const barThickness = labels.length > 200 ? 1 : (labels.length > 60 ? 2 : undefined);
+
+  // ── Step 4: Build mixed bar + rolling-average-line datasets ────────────────
+  const datasets = [];
+  _lastStatsArr.forEach((s, i) => {
+    // Bars: raw daily/DOY pass rate
+    datasets.push({
+      type: 'bar',
+      label: s.icao,
+      data: barData[i],
+      backgroundColor: AP_COLORS[i] + '55',
+      borderColor: AP_COLORS[i],
+      borderWidth: 0,
+      borderRadius: 1,
+      order: 1, // render bars behind lines
+      ...(barThickness !== undefined ? { barThickness } : {}),
+    });
+    // Trendline: 7-day centered rolling average, drawn on top
+    datasets.push({
+      type: 'line',
+      label: s.icao + ' trend',
+      data: rollingAvg(barData[i], ROLLING_WINDOW),
+      borderColor: AP_COLORS[i],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
+      spanGaps: true,
+      order: 0, // render lines in front of bars
+    });
+  });
+
+  document.getElementById('ceiling-chart-wrap').style.display = 'block';
+  const ctx = document.getElementById('ceiling-chart').getContext('2d');
+  ceilingChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    plugins: [narrowBarPlugin],
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: makeBarTrendTooltip(useDOY, '')
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#6b7280', font: { family: 'DM Mono', size: 10 },
+            maxRotation: 45, minRotation: 0,
+            autoSkip: false,
+            callback: (val, idx) => {
+              const lbl = labels[idx];
+              if (!lbl || !lbl.endsWith('-01')) return '';
+              return MONTH_NAMES[parseInt(lbl.slice(0,2)) - 1];
+            }
+          }
+        },
+        y: {
+          min: 0, max: 100,
+          grid: { color: '#ffffff08' },
+          ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 11 }, callback: v => v+'%' }
+        }
+      }
+    }
+  });
+
+  // Grey out button until the altitude selection changes
+  setAnalyzeBtnState('ceiling-analyze-btn', false);
+}
+
+// ── 5: PRECIP & ICING — daily bar charts ─────────────────────────────────────
+// Shared data builder for all event-frequency bar charts (precip, icing, phenomena).
+// eventFn(obs) → boolean: true if that observation counts as "the event occurred".
+// Returns { labels, datasets, useDOY } for use by renderDailyEventChart / renderPhenomChart.
+//
+// Label strategy (same as ceiling chart):
+//   > 400 dates (multi-year): MM-DD labels, bars = % of years the event occurred on that date
+//   ≤ 400 dates (short range): individual dates, bars = 0% or 100% (had/didn't have event)
+function buildEventData(statsArr, eventFn) {
+  const allDates = new Set();
+  statsArr.forEach(s => s.rawObs.forEach(o => allDates.add(o.dateKey)));
+  const sortedDates = [...allDates].sort();
+  const useDOY = sortedDates.length > 400;
+
+  if (useDOY) {
+    // Single pass per airport: build both the date→hadEvent map and the date-count set
+    // for each MM-DD simultaneously (avoids a second pass over rawObs).
+    const doyPerAp = statsArr.map(s => {
+      const allDatesPerDOY = {}; // mmdd → Set<dateKey> — all years that had data for this date
+      const datesByDOY     = {}; // mmdd → { dateKey: hadEvent } — whether event occurred per year
+      s.rawObs.forEach(o => {
+        const mmdd = o.dateKey.slice(5);
+        if (!allDatesPerDOY[mmdd]) allDatesPerDOY[mmdd] = new Set();
+        allDatesPerDOY[mmdd].add(o.dateKey);
+        if (!datesByDOY[mmdd]) datesByDOY[mmdd] = {};
+        // Mark as true on first matching obs; don't overwrite true with false (OR logic per day)
+        if (eventFn(o)) datesByDOY[mmdd][o.dateKey] = true;
+        else if (!datesByDOY[mmdd][o.dateKey]) datesByDOY[mmdd][o.dateKey] = false;
+      });
+      // Convert raw maps to { mmdd → pct } — "% of years event occurred on this date"
+      const byDOY = {};
+      Object.keys(allDatesPerDOY).forEach(mmdd => {
+        const total     = allDatesPerDOY[mmdd].size;
+        const withEvent = Object.values(datesByDOY[mmdd] || {}).filter(Boolean).length;
+        byDOY[mmdd] = total ? (withEvent / total * 100) : 0;
+      });
+      return byDOY;
+    });
+    const allDOY = new Set();
+    doyPerAp.forEach(d => Object.keys(d).forEach(k => allDOY.add(k)));
+    const labels = [...allDOY].sort();
+    const datasets = statsArr.map((s, i) => ({
+      label: s.icao,
+      data: labels.map(d => doyPerAp[i][d] ?? null),
+      backgroundColor: AP_COLORS[i] + '55',
+      borderColor: AP_COLORS[i],
+      borderWidth: 0, borderRadius: 1,
+    }));
+    return { labels, datasets, useDOY: true };
+  } else {
+    // Short dataset: one bar per date — 100 if any obs on that day triggered eventFn, else 0
+    const dayHadEvent = statsArr.map(s => {
+      const byDay = {};
+      s.rawObs.forEach(o => {
+        if (!byDay[o.dateKey]) byDay[o.dateKey] = false;
+        if (eventFn(o)) byDay[o.dateKey] = true;
+      });
+      return byDay;
+    });
+    const labels = sortedDates.map(d => d.slice(5));
+    const datasets = statsArr.map((s, i) => ({
+      label: s.icao,
+      data: sortedDates.map(d => dayHadEvent[i][d] !== undefined ? (dayHadEvent[i][d] ? 100 : 0) : null),
+      backgroundColor: AP_COLORS[i] + '55',
+      borderColor: AP_COLORS[i],
+      borderWidth: 0, borderRadius: 1,
+    }));
+    return { labels, datasets, useDOY: false };
+  }
+}
+
+// Generic mixed bar+rolling-avg-line chart renderer.
+// Used for both precip/icing (via renderPrecip) and phenomena (via renderPhenomChart).
+// Returns the new Chart instance so callers can store it for future .destroy() calls.
+function renderDailyEventChart(canvasId, chartRef, statsArr, field, tooltipSuffix) {
+  if (chartRef) { chartRef.destroy(); chartRef = null; }
+  // Build bar data using the field name on each obs object (e.g., 'hasPrecip', 'hasIcing')
+  const { labels, datasets: barDatasets, useDOY } = buildEventData(statsArr, o => o[field]);
+  // Stride for x-axis label thinning — show ~12 labels max regardless of date range
+  const stride = Math.max(1, Math.floor(labels.length / 12));
+  const barThickness = labels.length > 200 ? 1 : (labels.length > 60 ? 2 : undefined);
+
+  // Interleave bar and trendline datasets per airport (bar order:1 sits behind line order:0)
+  const mixedDatasets = [];
+  barDatasets.forEach((d, i) => {
+    mixedDatasets.push({
+      type: 'bar',
+      ...d,
+      order: 1,
+      ...(barThickness !== undefined ? { barThickness } : {}),
+    });
+    mixedDatasets.push({
+      type: 'line',
+      label: d.label + ' trend',
+      data: rollingAvg(d.data, ROLLING_WINDOW),
+      borderColor: AP_COLORS[i],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
+      spanGaps: true,
+      order: 0,
+    });
+  });
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: mixedDatasets },
+    plugins: [narrowBarPlugin],
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: makeBarTrendTooltip(useDOY, tooltipSuffix)
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#6b7280', font: { family: 'DM Mono', size: 10 }, maxRotation: 0,
+            autoSkip: false,
+            callback: (val, idx) => {
+              if (!useDOY) return idx % stride === 0 ? labels[idx] : '';
+              const lbl = labels[idx];
+              if (!lbl || !lbl.endsWith('-01')) return '';
+              return MONTH_NAMES[parseInt(lbl.slice(0, 2)) - 1];
+            }
+          }
+        },
+        y: { min: 0, max: 100, grid: { color: '#ffffff08' },
+          ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 11 }, callback: v => v+'%' } }
+      }
+    }
+  });
+}
+
+// Renders both the precip and icing bar charts using the shared renderDailyEventChart helper.
+// 'hasPrecip' and 'hasIcing' are boolean flags set per obs in parseMETARCSV.
+function renderPrecip(statsArr) {
+  precipChart = renderDailyEventChart('precip-chart', precipChart, statsArr, 'hasPrecip', 'of days had precip');
+  icingChart  = renderDailyEventChart('icing-chart',  icingChart,  statsArr, 'hasIcing',  'of days had icing');
+}
+
+// ── 6: PHENOMENA CHART + REMARKS ─────────────────────────────────────────────
+
+// Renders the per-phenomenon frequency bar chart for the phenomenon currently selected
+// in the #phenom-select dropdown.  Called on initial render and whenever the user
+// changes the dropdown.  Uses the same mixed bar+trendline approach as the other charts.
+function renderPhenomChart() {
+  if (!_lastStatsArr) return;
+  const sel = document.getElementById('phenom-select');
+  const phenomKey = sel.value;
+  if (!phenomKey) return; // dropdown may be empty if no phenomena found
+  const def = PHENOMENA_CODES.find(p => p.key === phenomKey);
+  const label = def ? def.label : phenomKey;
+
+  if (phenomChart) { phenomChart.destroy(); phenomChart = null; }
+  // eventFn: check the phenomena array on each obs (set by parsePhenomena)
+  const { labels, datasets: barDatasets, useDOY } = buildEventData(_lastStatsArr, o => o.phenomena.includes(phenomKey));
+  const stride = Math.max(1, Math.floor(labels.length / 12));
+  const barThickness = labels.length > 200 ? 1 : (labels.length > 60 ? 2 : undefined);
+
+  // Same bar + trendline interleaving as renderDailyEventChart
+  const mixedDatasets = [];
+  barDatasets.forEach((d, i) => {
+    mixedDatasets.push({ type: 'bar', ...d, order: 1, ...(barThickness !== undefined ? { barThickness } : {}) });
+    mixedDatasets.push({
+      type: 'line', label: d.label + ' trend',
+      data: rollingAvg(d.data, ROLLING_WINDOW),
+      borderColor: AP_COLORS[i], backgroundColor: 'transparent',
+      borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true, order: 0,
+    });
+  });
+
+  const ctx = document.getElementById('phenom-chart').getContext('2d');
+  phenomChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: mixedDatasets },
+    plugins: [narrowBarPlugin],
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: makeBarTrendTooltip(useDOY, 'of days had ' + label.toLowerCase())
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#6b7280', font: { family: 'DM Mono', size: 10 }, maxRotation: 0,
+            autoSkip: false,
+            callback: (val, idx) => {
+              if (!useDOY) return idx % stride === 0 ? labels[idx] : '';
+              const lbl = labels[idx];
+              if (!lbl || !lbl.endsWith('-01')) return '';
+              return MONTH_NAMES[parseInt(lbl.slice(0, 2)) - 1];
+            }
+          }
+        },
+        y: { min: 0, max: 100, grid: { color: '#ffffff08' },
+          ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 11 }, callback: v => v+'%' } }
+      }
+    }
+  });
+}
+
+// Renders the Remarks section: populates the phenomenon dropdown with the union of
+// each airport's top-5 phenomena (preserving first-appearance order), draws the
+// phenomena frequency chart for the first/current selection, and builds the ranked
+// phenomena cards with horizontal proportion bars.
+function renderRemarks(statsArr) {
+  // ── Phenomenon dropdown ──────────────────────────────────────────────────────
+  // Union across all airports so the dropdown lists any phenomenon that made the
+  // top-5 at any airport, not just those shared across all of them.
+  const seen = new Set();
+  const unionPhenomena = [];
+  statsArr.forEach(s => {
+    s.topPhenomena.forEach(p => {
+      if (!seen.has(p.key)) {
+        seen.add(p.key);
+        const def = PHENOMENA_CODES.find(d => d.key === p.key);
+        unionPhenomena.push({ key: p.key, label: def ? def.label : p.key });
+      }
+    });
+  });
+
+  // Repopulate dropdown; preserve the previously selected phenomenon if it's still present
+  const sel = document.getElementById('phenom-select');
+  const prevKey = sel.value;
+  sel.innerHTML = unionPhenomena.map(p =>
+    `<option value="${p.key}"${p.key === prevKey ? ' selected' : ''}>${p.label}</option>`
+  ).join('');
+  if (!prevKey && unionPhenomena.length) sel.value = unionPhenomena[0].key;
+  renderPhenomChart(); // draw chart for the (now-selected) phenomenon
+
+  // ── Per-airport phenomena cards ──────────────────────────────────────────────
+  const grid = document.getElementById('remarks-grid');
+  grid.innerHTML = '';
+  statsArr.forEach((s, i) => {
+    const color = AP_COLORS[i];
+    const card = document.createElement('div');
+    card.className = 'remarks-card';
+    // maxDays = #1 phenomenon's day count; used to normalize the proportion bars
+    const maxDays = s.topPhenomena.length ? s.topPhenomena[0].days : 1;
+    card.innerHTML = `
+      <div class="remarks-ap-label" style="color:${color}">${s.icao}</div>
+      <div class="remarks-list">${
+        s.topPhenomena.length === 0
+          ? '<div style="color:var(--muted);font-size:13px;font-family:DM Mono,monospace">No significant phenomena found</div>'
+          : s.topPhenomena.map((p, rank) => `
+          <div class="remarks-row">
+            <div class="remarks-rank">${rank+1}</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text)">${p.label}</div>
+                ${p.peakHour !== null
+                  // Show "L" (local) if TZ data available, "Z" (UTC) if not
+                  ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2)">peak ~${String(p.peakHour).padStart(2,'0')}${s.timezone ? 'L' : 'Z'}</div>`
+                  : ''}
+              </div>
+              <div class="remarks-bar-bg" style="height:10px">
+                <div class="remarks-bar-fill" style="width:${(p.days/maxDays*100).toFixed(1)}%;background:${color}99;height:100%"></div>
+              </div>
+            </div>
+            <div class="remarks-count">${p.pct.toFixed(1)}%</div>
+          </div>`).join('')
+      }</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ─── AVERAGE DAY ──────────────────────────────────────────────────────────────
+// Synthesizes a representative METAR for a specific local hour on a calendar date
+// by aggregating historical observations that fall on that MM-DD AND that local hour
+// across all available years.
+//
+// localHour – integer 0–23 in the airport's local time (uses statsObj.timezone).
+//             Falls back to UTC hour when timezone is unavailable.
+// Returns { insufficient: true } if fewer than 3 matching obs exist.
+// Otherwise returns { icao, displayName, windStr, visStr, skyStr, tempStr, altStr, cat, years, n }.
+function computeAverageDay(statsObj, month, day, localHour) {
+  // Filter to this calendar date
+  const dayObs = statsObj.rawObs.filter(o => o.month === month && o.day === day);
+
+  // Further narrow to the target local hour.
+  // utcHourToLocal converts each obs's UTC hour to local using the airport's IANA timezone.
+  // Falls back to UTC hour when no timezone is available (suffix will show 'Z' in that case).
+  const obs = dayObs.filter(o => {
+    const lh = statsObj.timezone
+      ? utcHourToLocal(o.dateKey, o.hour, statsObj.timezone)
+      : o.hour;
+    return lh === localHour;
+  });
+
+  // Require at least 3 years of data for this hour on this date
+  if (obs.length < 3) return { insufficient: true, icao: statsObj.icao, displayName: statsObj.displayName };
+
+  const years = new Set(obs.map(o => o.dateKey.slice(0, 4))).size;
+
+  // Wind — use circularMeanDir helper for direction; scalar mean for speed
+  const allSpeedObs = obs.filter(o => !isNaN(o.sped));
+  const meanSpd = allSpeedObs.length ? Math.round(allSpeedObs.reduce((a, b) => a + b.sped, 0) / allSpeedObs.length) : 0;
+  const rawDir  = circularMeanDir(obs);
+  // Meteorological convention: 0° is reported as 360° for non-calm winds
+  const windDir = rawDir !== null ? (Math.round(rawDir) === 0 ? 360 : Math.round(rawDir)) : 0;
+  const windStr = meanSpd < 3 ? '00000KT'
+    : `${String(windDir).padStart(3, '0')}${String(meanSpd).padStart(2, '0')}KT`;
+
+  // Visibility — median snapped to standard METAR reporting values
+  const METAR_VIS = [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 9, 10];
+  const validVis = obs.map(o => o.vsby).filter(v => !isNaN(v)).sort((a, b) => a - b);
+  let visStr = '10SM';
+  if (validVis.length) {
+    const med     = median(validVis);
+    const snapped = METAR_VIS.reduce((prev, cur) => Math.abs(cur - med) < Math.abs(prev - med) ? cur : prev);
+    const fracMap = { 0.25: '1/4SM', 0.5: '1/2SM', 0.75: '3/4SM' };
+    visStr = fracMap[snapped] || `${snapped}SM`;
+  }
+
+  // Sky conditions — include layers that appeared in ≥25% of obs
+  const layerHeights = {};
+  obs.forEach(o => {
+    (o.skyLayers || []).forEach(([code, height]) => {
+      if (!layerHeights[code]) layerHeights[code] = [];
+      layerHeights[code].push(height);
+    });
+  });
+  const threshold = obs.length * 0.25;
+  const layers = [];
+  for (const [code, heights] of Object.entries(layerHeights)) {
+    if (heights.length >= threshold) {
+      const sortedH = [...heights].sort((a, b) => a - b);
+      layers.push([code, Math.round(median(sortedH) / 100) * 100]);
+    }
+  }
+  layers.sort((a, b) => a[1] - b[1]);
+  // Deduplicate: when two codes round to the same height, keep the one with higher coverage rank.
+  const COV_RANK = { OVC: 4, VV: 4, BKN: 3, SCT: 2, FEW: 1 };
+  const dedupedLayers = [];
+  for (const [code, height] of layers) {
+    const existing = dedupedLayers.findIndex(([, h]) => h === height);
+    if (existing === -1) {
+      dedupedLayers.push([code, height]);
+    } else if ((COV_RANK[code] || 0) > (COV_RANK[dedupedLayers[existing][0]] || 0)) {
+      dedupedLayers[existing] = [code, height]; // replace with higher-coverage code
+    }
+  }
+  const skyStr = dedupedLayers.length
+    ? dedupedLayers.slice(0, 3).map(([c, h]) => `${c}${String(Math.round(h / 100)).padStart(3, '0')}`).join(' ')
+    : 'CLR';
+
+  // Temperature & Dewpoint — arithmetic mean, rounded to nearest integer °C
+  const validTemp = obs.map(o => o.temp).filter(t => !isNaN(t));
+  const validDewp = obs.map(o => o.dewpoint).filter(d => !isNaN(d));
+  const meanTemp = validTemp.length ? Math.round(validTemp.reduce((a, b) => a + b, 0) / validTemp.length) : null;
+  const meanDewp = validDewp.length ? Math.round(validDewp.reduce((a, b) => a + b, 0) / validDewp.length) : null;
+  const tempStr = (meanTemp !== null && meanDewp !== null) ? `${meanTemp}/${meanDewp}` : null;
+
+  // Altimeter — arithmetic mean, encoded as A2992 format
+  const validAlti = obs.map(o => o.altimeter).filter(a => !isNaN(a));
+  let altStr = null;
+  if (validAlti.length) {
+    const meanAlti = validAlti.reduce((a, b) => a + b, 0) / validAlti.length;
+    altStr = `A${Math.round(meanAlti * 100).toString().padStart(4, '0')}`;
+  }
+
+  // Flight category from median ceiling + median vis
+  const validCeil = obs.map(o => o.ceiling).filter(c => c !== undefined).sort((a, b) => a - b);
+  const medCeil = validCeil.length ? median(validCeil) : 99999;
+  const medVis  = validVis.length  ? median(validVis)  : 10;
+  let cat = 'VFR';
+  if (medCeil < 500  || medVis < 1)  cat = 'LIFR';
+  else if (medCeil < 1000 || medVis < 3)  cat = 'IFR';
+  else if (medCeil <= 3000 || medVis <= 5) cat = 'MVFR';
+
+  return { icao: statsObj.icao, displayName: statsObj.displayName, windStr, visStr, skyStr, tempStr, altStr, cat, years, n: obs.length, insufficient: false };
+}
+
+// Target local hours for the four synthetic METARs per airport
+const AVG_DAY_HOURS = [6, 12, 16, 20];
+
+// Renders one avg-day card per airport.  Each card shows 4 synthetic METARs —
+// one for each of AVG_DAY_HOURS — in METAR format with local time in the timestamp.
+// A [CAT] badge precedes each METAR line.  Shows "insufficient data" for individual
+// hours that lack at least 3 years of observations on that date.
+function renderAverageDay(month, day) {
+  const output = document.getElementById('avg-day-output');
+  const CAT_COLORS = { VFR: 'var(--vfr)', MVFR: 'var(--mvfr)', IFR: 'var(--ifr)', LIFR: 'var(--lifr)' };
+
+  // MMDD portion shared by all METAR lines in this render
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  const dateTag = `${mm}${dd}`;
+
+  output.innerHTML = _lastStatsArr.map((s, i) => {
+    const color = AP_COLORS[i];
+
+    // Compute one result per target hour
+    const results = AVG_DAY_HOURS.map(hr => computeAverageDay(s, month, day, hr));
+
+    // If every hour is insufficient, show a single placeholder card
+    if (results.every(r => r.insufficient)) {
+      return `<div class="avg-day-card">
+        <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:${color}">${s.displayName}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">Not enough historical data for this date</div>
+      </div>`;
+    }
+
+    // Max year count across all successful results (used in the provenance line)
+    const maxYears = Math.max(...results.filter(r => !r.insufficient).map(r => r.years));
+    // Total obs across all hours
+    const totalN   = results.filter(r => !r.insufficient).reduce((sum, r) => sum + r.n, 0);
+
+    // Build one METAR display row per hour
+    const metarRows = results.map((r, idx) => {
+      const hr    = AVG_DAY_HOURS[idx];
+      const hrStr = String(hr).padStart(2, '0') + 'L'; // e.g. "06L"
+      const timeTag = `${dateTag}/${hrStr}`;
+
+      if (r.insufficient) {
+        // Dimmed placeholder row when this specific hour has too few obs
+        return `<div style="display:flex;align-items:baseline;gap:8px;padding:4px 0">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);width:40px;flex-shrink:0">${hrStr}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">insufficient data for this hour</span>
+        </div>`;
+      }
+
+      // Assemble METAR token list: ICAO MMDD/HHL WIND VIS SKY [TEMP] [ALTI]
+      const parts = [s.icao, timeTag, r.windStr, r.visStr, r.skyStr];
+      if (r.tempStr) parts.push(r.tempStr);
+      if (r.altStr)  parts.push(r.altStr);
+      const metarStr = parts.join(' ');
+      const catColor = CAT_COLORS[r.cat] || 'var(--muted)';
+
+      return `<div style="display:flex;align-items:baseline;gap:8px;padding:3px 0">
+        <span class="avg-day-cat" style="background:${catColor}22;color:${catColor};flex-shrink:0;width:40px;text-align:center">${r.cat}</span>
+        <div class="avg-day-metar" style="padding:6px 10px;margin:0;flex:1">${metarStr}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="avg-day-card" style="gap:6px">
+      <div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:${color}">${s.displayName}</div>
+      ${metarRows}
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px">Computed from ${maxYears} year${maxYears !== 1 ? 's' : ''} · ${totalN} total observations</div>
+    </div>`;
+  }).join('');
+}
+
+// Called by both month and day selectors (onchange).
+// When the month changes, repopulates the day dropdown to the correct number of days
+// (using 2024 as the reference year because it's a leap year and handles Feb 29).
+// Renders avg-day output when both selectors have valid values; clears it otherwise.
+function updateAvgDay() {
+  const monthSel = document.getElementById('avgDayMonth');
+  const daySel   = document.getElementById('avgDayDay');
+  const month = parseInt(monthSel.value);
+
+  // Repopulate day dropdown to match days in selected month
+  if (!isNaN(month)) {
+    const daysInMonth = new Date(2024, month, 0).getDate(); // 2024 is a leap year (handles Feb 29)
+    const currentDay = parseInt(daySel.value);
+    daySel.innerHTML = '<option value="">Day…</option>' +
+      Array.from({ length: daysInMonth }, (_, i) => i + 1)
+        .map(d => `<option value="${d}"${d === currentDay ? ' selected' : ''}>${d}</option>`).join('');
+  }
+
+  const day = parseInt(daySel.value);
+  if (!isNaN(month) && !isNaN(day) && _lastStatsArr) {
+    renderAverageDay(month, day);
+  } else {
+    document.getElementById('avg-day-output').innerHTML = ''; // clear if selection incomplete
+  }
+}
+
+// ─── MAIN COMPARISON RUNNER ───────────────────────────────────────────────────
+// Orchestrates the full data pipeline: validate inputs → show loading UI →
+// fetch METAR CSV + station metadata for each airport (in parallel) → parse →
+// compute stats → render results.  Airports are processed sequentially so the
+// log stream shows incremental progress to the user.
+async function runComparison() {
+  const codes = airports.map(a => a.trim().toUpperCase()).filter(a => a.length >= 3);
+  if (codes.length < 1) {
+    showError('Please enter at least one valid ICAO code.');
+    return;
+  }
+
+  hideError();
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('compare-btn').disabled = true;
+
+  const loadingText = document.getElementById('loading-text');
+  loadingText.textContent = 'Connecting to ASOS network…';
+
+  // ── Loading log helpers ───────────────────────────────────────────────────────
+  // The log uses direct DOM node mutation rather than innerHTML rebuild so the
+  // "live" flashing METAR ticker only touches two properties per tick (textContent,
+  // className) instead of re-rendering the entire log on every 60 ms frame.
+  const logEl = document.getElementById('loading-log');
+  const logPanel = document.getElementById('session-log-panel');
+  let liveEl = null; // DOM node for the current in-progress (flashing) line; null = no live line
+  logEl.innerHTML = '';
+  logPanel.style.display = 'block';
+
+  // Creates and appends a new log line; returns the element for later mutation.
+  // textContent is used (not innerHTML) so raw METAR text is safe without escaping.
+  function appendLine(text, cls) {
+    const div = document.createElement('div');
+    div.className = `loading-log-line${cls ? ' '+cls : ''}`;
+    div.textContent = text;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight; // auto-scroll to bottom
+    return div;
+  }
+
+  // Appends a permanent (non-live) log line and clears the live reference.
+  function logLine(text, cls = '') {
+    liveEl = null;
+    appendLine(text, cls);
+  }
+
+  // Updates the current live line in place, or creates one if none exists.
+  // Used for the flashing METAR ticker and "awaiting response…" status.
+  function setLive(text, cls = 'live') {
+    if (!liveEl) {
+      liveEl = appendLine(text, cls);
+    } else {
+      liveEl.textContent = text;
+      liveEl.className = `loading-log-line ${cls}`;
+    }
+  }
+
+  // Promotes the live line to a permanent entry (e.g., after fetch completes).
+  function commitLive(text, cls = 'ok') {
+    if (liveEl) {
+      liveEl.textContent = text;
+      liveEl.className = `loading-log-line ${cls}`;
+      liveEl = null;
+    } else {
+      appendLine(text, cls); // fallback if live line was never created
+    }
+  }
+
+  // Cycles through evenly-spaced samples from the METAR archive for `durationMs`
+  // at 60 ms/frame, displaying each in the live log line as a "radar sweep" effect.
+  async function flashMetars(metarSamples, durationMs) {
+    if (!metarSamples.length) return;
+    // Sample ~80 evenly-spaced METARs so we see different time periods across the archive
+    const step = Math.max(1, Math.floor(metarSamples.length / 80));
+    const picks = [];
+    for (let i = 0; i < metarSamples.length; i += step) picks.push(metarSamples[i]);
+    let i = 0;
+    const start = Date.now();
+    await new Promise(resolve => {
+      function tick() {
+        if (Date.now() - start >= durationMs) { resolve(); return; }
+        const m = picks[i % picks.length];
+        const display = m.length > 68 ? m.slice(0, 68) + '…' : m; // truncate long METARs
+        setLive('  ~ ' + display, 'live');
+        i++;
+        setTimeout(tick, 60); // ~16 fps
+      }
+      tick();
+    });
+  }
+
+  // ── Date range computation ────────────────────────────────────────────────────
+  // Determine the start date from the active filter (5yr or 10yr back from today)
+  const years = activeFilter === 'tenyear' ? 10 : 5;
+  const now = new Date();
+  const startD = new Date(now);
+  startD.setFullYear(startD.getFullYear() - years);
+  const fmtDate = d =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  const rangeStr = `${fmtDate(startD)} → ${fmtDate(now)}`;
+
+  // ── Log header ────────────────────────────────────────────────────────────────
+  logLine(`CloudBase — ASOS historical retrieval`, 'dim');
+  logLine(`mode: ${years}yr  airports: ${codes.length}  range: ${rangeStr}`, 'dim');
+  logLine(`────────────────────────────────────────────────`, 'dim');
+
+  try {
+    const allStats = [];
+    // ── Sequential fetch loop (one airport at a time) ─────────────────────────
+    // Airports are processed sequentially rather than in parallel so the loading log
+    // shows clear per-airport progress.  Within each airport, the METAR CSV and the
+    // station metadata (name + timezone) fetches run concurrently via Promise.all.
+    for (let k = 0; k < codes.length; k++) {
+      const code = codes[k];
+      loadingText.textContent = `Fetching ${code}…`;
+
+      logLine(`[${k+1}/${codes.length}] ${code}`, 'head');
+      logLine(`  > IEM station=${iemStationId(code)}  ${rangeStr}`, 'dim');
+      setLive(`  ~ awaiting response…`, 'live');
+
+      // Fetch METAR CSV and station metadata in parallel
+      const [{ obs, metars, bytes }, { name: stationName, timezone }] =
+        await Promise.all([fetchMETARs(code), fetchStationName(code)]);
+
+      loadingText.textContent = `Processing ${code}…`;
+      await flashMetars(metars, 1400); // show flashing METAR ticker while UI is "thinking"
+
+      // Format file size for display (KB or MB)
+      const sizeStr = bytes >= 1048576
+        ? `${(bytes / 1048576).toFixed(1)} MB`
+        : `${Math.round(bytes / 1024)} KB`;
+      commitLive(
+        `  ✓ ${obs.length.toLocaleString()} obs · ${sizeStr} · ${stationName || code} · ${timezone || 'UTC'}`,
+        'ok'
+      );
+      logLine(''); // blank spacer line between airports
+
+      allStats.push(computeStats(code, obs, stationName, timezone));
+    }
+
+    // ── Runway layout data (fetched once for all airports, cached in _runwayCache) ──
+    loadingText.textContent = 'Fetching runway layout data…';
+    logLine(`[runway layout]`, 'head');
+    try {
+      const runwayMap = await fetchRunways(codes, logLine);
+      allStats.forEach(s => { s.runways = runwayMap[s.icao] || []; });
+    } catch (rwErr) {
+      allStats.forEach(s => { s.runways = []; });
+      logLine(`  ✗ ${rwErr.message} — runways not shown`, 'dim');
+    }
+    logLine('');
+
+    // ── Finalize ─────────────────────────────────────────────────────────────────
+    loadingText.textContent = 'Rendering results…';
+    await new Promise(r => setTimeout(r, 180)); // brief pause before swapping views
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    renderResults(allStats, logLine);
+    logLine(`✓ complete`, 'ok');
+  } catch(err) {
+    // Network or parse failure — hide loading spinner, keep log visible for diagnosis
+    document.getElementById('loading').style.display = 'none';
+    showError('Error: ' + err.message);
+  } finally {
+    document.getElementById('compare-btn').disabled = false; // always re-enable the button
+  }
+}
+
+// Shows the inline error banner with the given message.
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// Hides the inline error banner.
+function hideError() {
+  document.getElementById('error-msg').style.display = 'none';
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+// Render the initial airport chip row on page load (uses default `airports` array).
+renderChips();
+</script>
+</body>
+</html>
